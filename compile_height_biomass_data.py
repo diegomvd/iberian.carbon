@@ -16,8 +16,6 @@ for fname in ifn4_groups_utm:
 
     pnoa_info_filtered = pnoa_file_info[pnoa_file_info['utm'] == int(utm)]
 
-    print(pnoa_info_filtered)
-    print(pnoa_info_filtered['years'].unique())
     for year in pnoa_info_filtered['years'].unique():
 
         pnoa_info_filtered_year = pnoa_info_filtered[pnoa_info_filtered['years']==year]
@@ -31,10 +29,10 @@ for fname in ifn4_groups_utm:
             fstem = row['file']
             path = 'PNOA2_LiDAR_Vegetation_25m/{}.tif'.format(fstem)
 
-            print(ifn4_year_canopy)
             ifn4_year_canopy = add_feature(ifn4_year_canopy,'h_{}'.format(index),path)    
-            print(ifn4_year_canopy)
-            break
-        break
+        
+        ifn4_year_canopy['height'] = ifn4_year_canopy.filter(like='h_').apply(lambda row: row.tolist(), axis=1)
+        print(ifn4_year_canopy['height'].unique())
+        
     
 
