@@ -22,3 +22,9 @@
 *.csv
 
 *.qix
+
+*.pyc
+
+GlobalWoodDensityDatabase.xls
+
+test.ipynb
