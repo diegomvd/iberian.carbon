@@ -15,10 +15,12 @@ from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 
+print('Starting')
 
 path_sentinel = '/Users/diegobengochea/git/iberian.carbon/data/WorldCover_composites_2020_2021/'
 path_pnoa = '/Users/diegobengochea/git/iberian.carbon/data/Vegetation_NDSM_PNOA2/PNOA2_merged_UTM30/'
 
+print('Declaring augmentation list')
 aug_list = AugmentationSequential(
     K.RandomHorizontalFlip(p=0.5),
     K.RandomVerticalFlip(p=0.5),
@@ -29,28 +31,34 @@ aug_list = AugmentationSequential(
     random_apply=3
 )
 
+print('Loading image data')
 # Image data
 swir_dataset = Sentinel2SWIR(path_sentinel)
 rgbnir_dataset = Sentinel2RGBNIR(path_sentinel)
 ndvi_dataset = Sentinel2NDVI(path_sentinel)
 vvvhratio_dataset = Sentinel1(path_sentinel)
-
+print('Loading mask data')
 # Mask data
 pnoa_dataset = PNOAnDSMV(path_pnoa)
 
+print('Intersecting datasets')
 # SWIR dataset is put at the end to upsample it from 20m to 10m resolution instead of downsampling the rest
 dataset_image = rgbnir_dataset & ndvi_dataset & vvvhratio_dataset & swir_dataset
 # This will downsample the canopy height data from 2,5m to 10m resolution.
 dataset = IntersectionDataset(dataset_image, pnoa_dataset, transforms=aug_list)
 
+print('Defining sampler')
 sampler = RandomBatchGeoSampler(dataset, size = 256, batch_size = 128, length = 10000)
 
+print('Performing splits in train, validation and test sets')
 train_set, val_set, test_set = random_split(dataset=dataset,lengths=[0.8,0.1,0.1])
 
+print('Instantiate dataloaders')
 train_dataloader = DataLoader(train_set, sampler=sampler, num_workers=0)
 val_dataloader = DataLoader(val_set, sampler=sampler, num_workers=0)
 test_dataloader = DataLoader(test_set, sampler=sampler, num_workers=0)
 
+print('Declaring the model')
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
 unet_regression = PixelwiseRegressionTask(
     model='unet',
@@ -63,6 +71,7 @@ unet_regression = PixelwiseRegressionTask(
     patience =10    
 )
 
+print('Defining lightning trainer')
 # Define a lightning trainer
 accelerator = 'mps' if torch.mps.is_available() else 'cpu'
 checkpoint_dir = ''
@@ -73,6 +82,7 @@ early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0.0001, pa
 tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
+
 trainer = Trainer(
     accelerator=accelerator,
     callbacks=[checkpoint_callback, early_stopping_callback],
@@ -81,7 +91,11 @@ trainer = Trainer(
     max_epochs=1000,
 )
 
+print('Starting training process')
+
 trainer.fit(model=unet_regression, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
+
+print('Starting model testing')
 trainer.test(model=unet_regression, dataloaders=test_dataloader)
 
 
