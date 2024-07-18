@@ -16,11 +16,8 @@ from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 
 
-path_swir = ''
-path_rgbnir = ''
-path_ndvi = ''
-path_vvvhratio = ''
-path_pnoa = ''
+path_sentinel = '/Users/diegobengochea/git/iberian.carbon/data/WorldCover_composites_2020_2021/'
+path_pnoa = '/Users/diegobengochea/git/iberian.carbon/data/Vegetation_NDSM_PNOA2/PNOA2_merged_UTM30/'
 
 aug_list = AugmentationSequential(
     K.RandomHorizontalFlip(p=0.5),
@@ -33,15 +30,17 @@ aug_list = AugmentationSequential(
 )
 
 # Image data
-swir_dataset = Sentinel2SWIR(path_swir)
-rgbnir_dataset = Sentinel2RGBNIR(path_rgbnir)
-ndvi_dataset = Sentinel2NDVI(path_ndvi)
-vvvhratio_dataset = Sentinel1(path_vvvhratio)
+swir_dataset = Sentinel2SWIR(path_sentinel)
+rgbnir_dataset = Sentinel2RGBNIR(path_sentinel)
+ndvi_dataset = Sentinel2NDVI(path_sentinel)
+vvvhratio_dataset = Sentinel1(path_sentinel)
 
 # Mask data
 pnoa_dataset = PNOAnDSMV(path_pnoa)
 
+# SWIR dataset is put at the end to upsample it from 20m to 10m resolution instead of downsampling the rest
 dataset_image = rgbnir_dataset & ndvi_dataset & vvvhratio_dataset & swir_dataset
+# This will downsample the canopy height data from 2,5m to 10m resolution.
 dataset = IntersectionDataset(dataset_image, pnoa_dataset, transforms=aug_list)
 
 sampler = RandomBatchGeoSampler(dataset, size = 256, batch_size = 128, length = 10000)
