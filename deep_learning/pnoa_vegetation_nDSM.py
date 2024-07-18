@@ -16,7 +16,7 @@ class PNOAnDSMV(RasterDataset):
 
     is_image = False 
     filename_glob = "NDSM-*-COB*"
-    dtype = float32
+    # dtype = float32
 
     filename_regex = r'PNOA_(?P<date>\d{4})'
     date_format = "%Y"
