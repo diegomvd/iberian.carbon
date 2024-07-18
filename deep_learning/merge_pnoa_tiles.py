@@ -8,13 +8,13 @@ from rasterio.warp import transform_bounds
 from rasterio.crs import CRS
 import numpy  as np
 
-sentinel_path = '/home/dibepa/Downloads/WORLDCOVER/ESA_WORLDCOVER_10M_2021_V200/SWIR/'
+sentinel_path = '/Users/diegobengochea/WorldCoverComposites/WORLDCOVER/'
 
-pnoa_path = 'Entornos_Vuelo_LiDAR/2_Cobertura/'
-pnoa_dataddir =  'PNOA2_LIDAR_vegetation/'
+pnoa_path = '/Users/diegobengochea/git/iberian.carbon/Entornos_Vuelo_LiDAR/2_Cobertura/'
+pnoa_dataddir =  '/Users/diegobengochea/PNOA2_LIDAR_VEGETATION/'
 
 for year in [2020,2021]:
-    for sentinel_tile in Path(sentinel_path).glob('*{}*SWIR.tif'.format(year)):
+    for sentinel_tile in Path(sentinel_path).rglob('*{}*SWIR.tif'.format(year)):
         print(sentinel_tile)
         
         with rasterio.open(sentinel_tile)  as src_sentinel:
@@ -24,9 +24,10 @@ for year in [2020,2021]:
 
             tile_list = []
             fileids = set()
+            print('here')
             for pnoa_polygons in Path(pnoa_path).rglob('*.shp'):
                 utm = re.findall('_HU(..)_',str(pnoa_polygons))[0]
-
+                print('utm')
                 pnoa_gdf = gpd.read_file(pnoa_polygons)
                 intersecting_tiles = pnoa_gdf.intersects(polygon_sentinel)
                 pnoa_intersecting = pnoa_gdf[intersecting_tiles]
@@ -40,7 +41,7 @@ for year in [2020,2021]:
 
                 if len(merging_dict)>0:
                     esa_id = re.findall('v.00_(.*)_SWIR.tif',str(sentinel_tile))[0]
-                    merge_name = 'deep_learning/PNOA_{}_H{}_{}_NDSM.tif'.format(year,utm,esa_id)
+                    merge_name = '/Users/diegobengochea/PNOA2_merged/PNOA_{}_H{}_{}_NDSM.tif'.format(year,utm,esa_id)
                     image, transform = merge( list(merging_dict.values()) )
                     with rasterio.open(
                         merge_name,
@@ -56,11 +57,7 @@ for year in [2020,2021]:
                         compress='lzw'
                     ) as new_dataset:
                         new_dataset.write(image[0,:,:], 1) 
-                    #merge and put as name the sentinel tile NW
                 
-        break
-# print(image)
-# print(transform)
 
 
 
