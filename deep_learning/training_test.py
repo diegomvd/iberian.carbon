@@ -53,13 +53,16 @@ dataset = IntersectionDataset(dataset_image, pnoa_dataset, transforms=aug_list)
 print('Defining sampler')
 sampler = RandomBatchGeoSampler(dataset, size = 256, batch_size = 128, length = 10000)
 
-print('Performing splits in train, validation and test sets')
-train_set, val_set, test_set = random_split(dataset=dataset,lengths=[0.8,0.1,0.1])
+# print('Performing splits in train, validation and test sets')
+# train_set, val_set, test_set = random_split(dataset=dataset,lengths=[0.8,0.1,0.1])
 
 print('Instantiate dataloaders')
-train_dataloader = DataLoader(train_set, sampler=sampler, num_workers=0)
-val_dataloader = DataLoader(val_set, sampler=sampler, num_workers=0)
-test_dataloader = DataLoader(test_set, sampler=sampler, num_workers=0)
+train_dataloader = DataLoader(dataset, sampler=sampler, num_workers=0)
+
+# print('Instantiate dataloaders')
+# train_dataloader = DataLoader(train_set, sampler=sampler, num_workers=0)
+# val_dataloader = DataLoader(val_set, sampler=sampler, num_workers=0)
+# test_dataloader = DataLoader(test_set, sampler=sampler, num_workers=0)
 
 print('Declaring the model')
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
@@ -95,8 +98,9 @@ trainer = Trainer(
 )
 
 print('Starting training process')
+trainer.fit(model=unet_regression, train_dataloaders=train_dataloader)
 
-trainer.fit(model=unet_regression, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
+# trainer.fit(model=unet_regression, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 
 print('Starting model testing')
 trainer.test(model=unet_regression, dataloaders=test_dataloader)
