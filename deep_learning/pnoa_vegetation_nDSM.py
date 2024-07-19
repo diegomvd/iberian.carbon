@@ -130,7 +130,7 @@ class PNOAnDSMV(RasterDataset):
         if self.transforms is not None:
             sample = self.transforms(sample)
 
-       # sample['crs'] = self.crs
-       # sample['bbox'] = query    
+        sample['crs'] = self.crs
+        sample['bbox'] = query    
 
         return sample    
