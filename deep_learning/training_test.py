@@ -8,7 +8,7 @@ from kornia.augmentation.container import AugmentationSequential
 
 from torchgeo.samplers import RandomBatchGeoSampler
 from torchgeo.trainers import PixelwiseRegressionTask
-from torchgeo.samplers import RandomBatchGeoSampler
+from torchgeo.samplers import RandomBatchGeoSampler, RandomGeoSampler
 from torchgeo.datasets import IntersectionDataset
 
 from lightning.pytorch import Trainer
@@ -48,20 +48,20 @@ print('Intersecting datasets')
 # SWIR dataset is put at the end to upsample it from 20m to 10m resolution instead of downsampling the rest
 dataset_image = rgbnir_dataset & ndvi_dataset & vvvhratio_dataset & swir_dataset
 # This will downsample the canopy height data from 2,5m to 10m resolution.
-dataset = IntersectionDataset(dataset_image, pnoa_dataset, transforms=aug_list)
+dataset = IntersectionDataset(dataset_image, pnoa_dataset)
+
+print('Dataset')
+print(dataset)
 
 print('Defining sampler')
-sampler = RandomBatchGeoSampler(dataset, size = 256, batch_size = 128, length = 10000)
+sampler = RandomGeoSampler(dataset, size=256, length=2)
 
 # print('Performing splits in train, validation and test sets')
-# train_set, val_set, test_set = random_split(dataset=dataset,lengths=[0.8,0.1,0.1])
+train_set, val_set = random_split(dataset=dataset,lengths=[0.7,0.3])
 
 print('Instantiate dataloaders')
-train_dataloader = DataLoader(dataset, sampler=sampler, num_workers=0)
-
-# print('Instantiate dataloaders')
-# train_dataloader = DataLoader(train_set, sampler=sampler, num_workers=0)
-# val_dataloader = DataLoader(val_set, sampler=sampler, num_workers=0)
+train_dataloader = DataLoader(train_set, sampler=sampler, num_workers=0)
+val_dataloader = DataLoader(val_set, sampler=sampler, num_workers=0)
 # test_dataloader = DataLoader(test_set, sampler=sampler, num_workers=0)
 
 print('Declaring the model')
@@ -94,13 +94,13 @@ trainer = Trainer(
     callbacks=[checkpoint_callback, early_stopping_callback],
     log_every_n_steps=50,
     logger=tb_logger,
-    max_epochs=1000,
+    max_epochs=2,
 )
 
 print('Starting training process')
-trainer.fit(model=unet_regression, train_dataloaders=train_dataloader)
+#trainer.fit(model=unet_regression, train_dataloaders=train_dataloader)
 
-# trainer.fit(model=unet_regression, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
+trainer.fit(model=unet_regression, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 
-print('Starting model testing')
-trainer.test(model=unet_regression, dataloaders=test_dataloader)
+# print('Starting model testing')
+# trainer.test(model=unet_regression, dataloaders=test_dataloader)
