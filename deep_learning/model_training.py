@@ -15,6 +15,8 @@ from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 
+import torch
+
 print('Starting')
 
 path_sentinel = '/Users/diegobengochea/git/iberian.carbon/data/WorldCover_composites_2020_2021/'
@@ -27,7 +29,8 @@ aug_list = AugmentationSequential(
     K.RandomAffine(degrees=(0, 360), scale=(0.3,0.9), p=0.25),
     K.RandomGaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0), p=0.25),
     K.RandomResizedCrop(size=(512, 512), scale=(0.5, 1.0), p=0.25),
-    data_keys=None,
+    # data_keys=None,
+    data_keys = ['image','mask'],
     random_apply=3
 )
 
@@ -73,7 +76,7 @@ unet_regression = PixelwiseRegressionTask(
 
 print('Defining lightning trainer')
 # Define a lightning trainer
-accelerator = 'mps' if torch.mps.is_available() else 'cpu'
+accelerator = 'mps' if torch.backends.mps.is_available() else 'cpu'
 checkpoint_dir = ''
 checkpoint_callback = ModelCheckpoint(
     monitor='val_loss', dirpath=checkpoint_dir, save_top_k=1, save_last=True
