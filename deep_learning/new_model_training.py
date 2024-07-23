@@ -1,3 +1,4 @@
+
 from sentinel_pnoa_datamodule import SentinelPNOADataModule
 
 import kornia.augmentation as K
@@ -9,7 +10,9 @@ from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 
-path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test/'
+import torch
+
+path = '/Users/diegobengochea/git/iberian.carbon/data/LightningDataModule_Data/'
 
 print('Declaring augmentation list')
 aug_list = AugmentationSequential(
@@ -18,12 +21,14 @@ aug_list = AugmentationSequential(
     K.RandomAffine(degrees=(0, 360), scale=(0.3,0.9), p=0.25),
     K.RandomGaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0), p=0.25),
     K.RandomResizedCrop(size=(512, 512), scale=(0.5, 1.0), p=0.25),
-    # data_keys=None,
-    data_keys = ['image','mask'],
+    #data_keys=None,
+    #data_keys = ['image','mask'],
+    data_keys = ['image'],
     random_apply=3
 )
 
-dm = SentinelPNOADataModule(data_dir=path, transform=aug_list)
+#dm = SentinelPNOADataModule(data_dir=path, transform=aug_list)
+dm = SentinelPNOADataModule(data_dir=path)
 
 print('Declaring the model')
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
