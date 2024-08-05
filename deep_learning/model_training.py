@@ -6,7 +6,6 @@ from torch.utils.data import DataLoader, random_split
 import kornia.augmentation as K
 from kornia.augmentation.container import AugmentationSequential
 
-from torchgeo.samplers import RandomBatchGeoSampler
 from torchgeo.trainers import PixelwiseRegressionTask
 from torchgeo.samplers import RandomBatchGeoSampler
 from torchgeo.datasets import IntersectionDataset
