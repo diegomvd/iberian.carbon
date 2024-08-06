@@ -40,6 +40,29 @@ class SentinelPNOADataModule(LightningDataModule):
             # This will downsample the canopy height data from 2,5m to 10m resolution.
             # sentinel_pnoa = IntersectionDataset(sentinel, pnoa_dataset)
             sentinel_pnoa = IntersectionDataset(sentinel, pnoa_dataset, transforms=self.transform)
+
+
+            print('Now')
+            samples = [ds[sentinel_pnoa.bounds] for ds in sentinel_pnoa.datasets]
+            print(samples)
+            sample = sentinel_pnoa.collate_fn(samples)
+            print(sample)
+            print('Image:')
+            print(sample['image'])
+            print('Mask:')
+            print(sample['mask'])
+            print('CRS:',sample['crs'])
+
+            print('Transform the shit out of it:')
+            sample = sentinel_pnoa.transforms(sample)
+            print(sample)
+            
+            print(sentinel_pnoa)
+            print('Now keys')
+            print(sentinel_pnoa.__getitem__(sentinel_pnoa.bounds))
+            print('Did I do it?')
+            
+
             
             self.set_train, self.set_val, self.set_test = random_grid_cell_assignment(
                 sentinel_pnoa, [0.8,0.1,0.1], grid_size = 6, generator=torch.Generator().manual_seed(self.seed)
