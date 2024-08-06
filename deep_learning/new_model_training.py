@@ -28,8 +28,8 @@ aug_dict = K.AugmentationSequential(
     random_apply=3
 )
 
-dm = SentinelPNOADataModule(data_dir=path, transform=aug_dict)
-#dm = SentinelPNOADataModule(data_dir=path)
+#dm = SentinelPNOADataModule(data_dir=path, transform=aug_dict)
+dm = SentinelPNOADataModule(data_dir=path)
 
 print('Declaring the model')
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
