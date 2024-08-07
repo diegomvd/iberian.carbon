@@ -4,7 +4,7 @@ from typing import Any, Callable, Optional, Union
 
 from rasterio.crs import CRS
 
-from torchgeo.datasets import RasterDataset
+from torchgeo.datasets import RasterDataset, IntersectionDataset
 from torchgeo.datasets.utils import BoundingBox
 from typing import Any, cast
 
