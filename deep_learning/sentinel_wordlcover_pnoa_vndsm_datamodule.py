@@ -59,6 +59,53 @@ SCALE = {
     'ratio': 0.001,
 }
 
+MINS = {
+    'B04': 0,
+    'B02': 0,
+    'B03': 0,
+    'B08': 0,
+    'B12-p50': 0,
+    'B11-p50': 0,
+    'NDVI-p90': 0,
+    'NDVI-p50': 0,
+    'NDVI-p10': 0,
+    'VV': -45,
+    'VH': -45,
+    'ratio': -45,
+}
+
+MAXS = {
+    'B04': 1,
+    'B02': 1,
+    'B03': 1,
+    'B08': 1,
+    'B12-p50': 1,
+    'B11-p50': 1,
+    'NDVI-p90': 1,
+    'NDVI-p50': 1,
+    'NDVI-p10': 1,
+    'VV': 20.535,
+    'VH': 20.535,
+    'ratio': 20.535,
+}
+
+
+class PNOAVnDSMNoNan(K.IntensityAugmentationBase2D):
+    """Rescale raster values according to scale and offset parameters"""
+
+    def __init__(self) -> None:
+        super().__init__(p=1)
+        self.flags = {"nodata" : -32767}
+
+    def apply_transform(
+        self,
+        input: Tensor,
+        params: Dict[str, Tensor],
+        flags: Dict[str, int],
+        transform: Optional[Tensor] = None,
+    ) -> Tensor:
+        input[input == flags['nodata']] = float('nan') 
+        return input
 
 class SentinelWorldCoverRescale(K.IntensityAugmentationBase2D):
     """Rescale raster values according to scale and offset parameters"""
@@ -77,12 +124,12 @@ class SentinelWorldCoverRescale(K.IntensityAugmentationBase2D):
         input[(input - flags['nodata']) == 0] = float('nan') 
         return input * flags['scale'] + flags['offset']        
 
-class Sentinel1MinMaxNormalize(K.IntensityAugmentationBase2D):
+class SentinelWorldCoverMinMaxNormalize(K.IntensityAugmentationBase2D):
     """Normalize Sentinel 1 GAMMA channels."""
 
-    def __init__(self) -> None:
+    def __init__(self, mins: Tensor, maxs: Tensor) -> None:
         super().__init__(p=1)
-        self.flags = {"min": -44.0, "max": 20.535}
+        self.flags = {"min": mins.view(1,-1,1,1), "max": maxs.view(1,-1,1,1)}
 
     def apply_transform(
         self,
@@ -91,7 +138,7 @@ class Sentinel1MinMaxNormalize(K.IntensityAugmentationBase2D):
         flags: Dict[str, int],
         transform: Optional[Tensor] = None,
     ) -> Tensor:
-        return (input - flags["min"]) / (flags["max"] - flags["min"] + 1e-6)        
+        return (input - flags["min"]) / (flags["max"] - flags["min"] + 1e-8)        
 
 class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
 
@@ -112,9 +159,11 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
         self.predict_patch_size = predict_patch_size
         self.collate_fn = collate_geo
 
-        self.nodata = torch.tensor([NODATA[b] for b in SentinelWorldCoverYearlyComposites.all_bands])
-        self.offset = torch.tensor([OFFSET[b] for b in SentinelWorldCoverYearlyComposites.all_bands])
-        self.scale = torch.tensor([SCALE[b] for b in SentinelWorldCoverYearlyComposites.all_bands])
+        nodata = torch.tensor([NODATA[b] for b in SentinelWorldCoverYearlyComposites.all_bands])
+        offset = torch.tensor([OFFSET[b] for b in SentinelWorldCoverYearlyComposites.all_bands])
+        scale = torch.tensor([SCALE[b] for b in SentinelWorldCoverYearlyComposites.all_bands])
+        mins = torch.tensor([MINS[b] for b in SentinelWorldCoverYearlyComposites.all_bands])
+        maxs = torch.tensor([MAXS[b] for b in SentinelWorldCoverYearlyComposites.all_bands])
 
         self.train_aug = {
             'general' : K.AugmentationSequential(
@@ -128,14 +177,14 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
                 same_on_batch = False, 
                 random_apply=3
             ),
-            'bandspecific_image:' : K.AugmentationSequential(SentinelWorldCoverRescale(self.nodata,self.offset,self.scale), Sentinel1MinMaxNormalize()),
-            'bandspecific_mask' : K.AugmentationSequential()
+            'image:' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+            'mask' : K.AugmentationSequential(PNOAVnDSMNoNan(),data_keys=None, keepdim=True)
         }
 
         self.aug = {
-            'image': K.AugmentationSequential(SentinelWorldCoverRescale(self.nodata,self.offset,self.scale), Sentinel1MinMaxNormalize()),#make it so it takes a single band= (0,1) does it),
-            'mask': K.AugmentationSequential()
-        }#Create nodata for pnoa
+            'image:' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+            'mask' : K.AugmentationSequential(PNOAVnDSMNoNan(),data_keys=None, keepdim=True)
+        }
 
     def on_after_batch_transfer(
         self, batch: dict[str, Tensor], dataloader_idx: int
@@ -161,7 +210,15 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
 
             # TODO: EDIT this part to make it compatible with our dataset
             aug = self._valid_attribute(f"{split}_aug", "aug")
-            batch = aug(batch)
+
+            # Image rescaling and normalization
+            batch['image'] = aug['image']({'image':batch['image']})
+            # Assign nan to nodata values
+            batch['mask'] = aug['mask']({'mask':batch['mask']})
+
+            if 'general' in aug.keys():
+                # Image augmentation
+                batch = aug['general'](batch)
 
         return batch
 
