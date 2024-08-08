@@ -48,12 +48,17 @@ class SentinelWorldCoverYearlyComposites(GeoDataset):
     
     dataset = None
 
+    all_bands = ['B04','B03','B02','B08','B12-p50','B11-p50','NDVI-p90','NDVI-p50','NDVI-p10','VV','VH','ratio']
+
     def intersect_datasets(dataset1: SentinelComposite, dataset2: SentinelComposite):
         return IntersectionDataset(dataset1,dataset2)
 
     def __init__(
         self,
-        *datasets: SentinelComposite,        
+        dataset_rgbnir: SentinelComposite,
+        dataset_swir: SentinelComposite,
+        dataset_ndvi: SentinelComposite,
+        dataset_vvvhratio: SentinelComposite,       
         transforms: Optional[Callable[[dict[str, Any]], dict[str, Any]]] = None,
     ) -> None:
         """Initialize a new SentinelWorldCoverYearlyComposites dataset instance.
@@ -63,7 +68,7 @@ class SentinelWorldCoverYearlyComposites(GeoDataset):
             transforms: a function/transform that takes an input sample
                 and returns a transformed version
         """
-        self.dataset = reduce(lambda d1, d2: intersect_datasets, datasets)
+        self.dataset = dataset_rgbnir & dataset_swir & dataset_ndvi & dataset_vvvhratio
         super().__init__(transforms)
 
     def __getitem__(self, query: BoundingBox) -> Dict[str,Any]:
