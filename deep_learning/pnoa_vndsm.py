@@ -4,7 +4,6 @@ class PNOAnDSMV(RasterDataset):
     """Spanish vegetation Normalized Surface Digital Model
 
     """
-
     is_image = False 
     filename_glob = "PNOA_*"
 

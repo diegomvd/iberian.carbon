@@ -89,13 +89,12 @@ MAXS = {
     'ratio': 20.535,
 }
 
-
 class PNOAVnDSMNoNan(K.IntensityAugmentationBase2D):
     """Rescale raster values according to scale and offset parameters"""
 
     def __init__(self) -> None:
         super().__init__(p=1)
-        self.flags = {"nodata" : -32767}
+        self.flags = {"nodata" : torch.tensor(-32767).view(-1,1,1)}
 
     def apply_transform(
         self,
@@ -104,7 +103,7 @@ class PNOAVnDSMNoNan(K.IntensityAugmentationBase2D):
         flags: Dict[str, int],
         transform: Optional[Tensor] = None,
     ) -> Tensor:
-        input[input == flags['nodata']] = float('nan') 
+        input[(input - flags['nodata']) == 0] = float('nan') 
         return input
 
 class SentinelWorldCoverRescale(K.IntensityAugmentationBase2D):
@@ -112,7 +111,7 @@ class SentinelWorldCoverRescale(K.IntensityAugmentationBase2D):
 
     def __init__(self, nodata: Tensor, offset: Tensor, scale: Tensor) -> None:
         super().__init__(p=1)
-        self.flags = {"nodata" : nodata.view(1,-1,1,1), "offset": offset.view(1,-1,1,1), "scale": scale.view(1,-1,1,1)}
+        self.flags = {"nodata" : nodata.view(-1,1,1), "offset": offset.view(-1,1,1), "scale": scale.view(-1,1,1)}
 
     def apply_transform(
         self,
@@ -129,7 +128,7 @@ class SentinelWorldCoverMinMaxNormalize(K.IntensityAugmentationBase2D):
 
     def __init__(self, mins: Tensor, maxs: Tensor) -> None:
         super().__init__(p=1)
-        self.flags = {"min": mins.view(1,-1,1,1), "max": maxs.view(1,-1,1,1)}
+        self.flags = {"min": mins.view(-1,1,1), "max": maxs.view(-1,1,1)}
 
     def apply_transform(
         self,

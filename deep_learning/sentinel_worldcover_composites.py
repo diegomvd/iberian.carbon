@@ -48,41 +48,19 @@ class SentinelComposite(RasterDataset):
     filename_regex = r'ESA_WorldCover_10m_(?P<date>\d{4})'
     date_format = "%Y"
 
-    def __init__(
-        self,
-        paths: Union[str, Iterable[str]] = "data",
-        bands: Optional[Sequence[str]] = None,
-    ) -> None:
-
-        super().__init__(paths=paths,bands=bands)
-
 class Sentinel2RGBNIR(SentinelComposite):
     """Sentinel-2 RGBNIR annual composites for 2020 and 2021.
 
     """
-
     filename_glob = "ESA_WorldCover_*S2RGBNIR*"
     all_bands = ['B04','B03','B02','B08']
-
-    def __init__(
-        self,
-        paths: Union[str, Iterable[str]] = "data",
-    ) -> None:
-        super.__init__(paths,self.all_bands)
 
 class Sentinel2SWIR(SentinelComposite):
     """Sentinel-2 SWIR annual composites for 2020 and 2021.
 
     """
-
     filename_glob = "ESA_WorldCover_*SWIR*"
     all_bands = ['B12-p50','B11-p50']  
-
-    def __init__(
-        self,
-        paths: Union[str, Iterable[str]] = "data",
-    ) -> None:
-        super.__init__(paths,self.all_bands)
 
 
 class Sentinel2NDVI(SentinelComposite):
@@ -92,25 +70,14 @@ class Sentinel2NDVI(SentinelComposite):
     filename_glob = "ESA_WorldCover_*NDVI*"
     all_bands = ['NDVI-p90', 'NDVI-p50', 'NDVI-p10']
 
-    def __init__(
-        self,
-        paths: Union[str, Iterable[str]] = "data",
-    ) -> None:
-        super.__init__(paths,self.all_bands)
 
 class Sentinel1(SentinelComposite):
     """Sentinel-1 VV, VH, VV/VH annual composites processed with GAMMA software for 2020 and 2021.
 
     """
-
     filename_glob = "ESA_WorldCover_*S1VVVHratio*"
     all_bands = ['VV','VH','ratio']
 
-    def __init__(
-        self,
-        paths: Union[str, Iterable[str]] = "data",
-    ) -> None:
-        super.__init__(paths,self.all_bands)
 
 
 
