@@ -225,32 +225,24 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
 
     def setup(self, stage: str):
 
-        print(self.data_dir)
-
         rgbnir_dataset = Sentinel2RGBNIR(self.data_dir)
         swir_dataset = Sentinel2SWIR(self.data_dir)
         ndvi_dataset = Sentinel2NDVI(self.data_dir)
         vvvhratio_dataset = Sentinel1(self.data_dir)
 
-        print(rgbnir_dataset.crs,swir_dataset.crs,ndvi_dataset.crs,vvvhratio_dataset.crs)
-
         sentinel = SentinelWorldCoverYearlyComposites(rgbnir_dataset,swir_dataset,ndvi_dataset,vvvhratio_dataset)
-
-        print(sentinel.crs)
 
         pnoa_dataset = PNOAnDSMV(self.data_dir)
 
-        print(pnoa_dataset.crs)
-        
-
-        # Do not perform image augmentations for predicting, rescaling and normalization is already done within dataset for sentinel data.
         if stage in ['predict']:
             self.predict_dataset = KorniaIntersectionDataset(sentinel, pnoa_dataset)
             self.predict_sampler = GridGeoSampler(
                 self.predict_dataset, self.predict_patch_size, self.predict_patch_size
             ) 
         else:
-            
+            print(sentinel.bounds)
+            print(pnoa_dataset.bounds)
+
             # This will downsample the canopy height data from 2,5m to 10m resolution.
             sentinel_pnoa = KorniaIntersectionDataset(sentinel, pnoa_dataset)
                         
