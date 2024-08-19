@@ -1,7 +1,4 @@
-from sentinel_pnoa_datamodule import SentinelPNOADataModule
-
-import kornia.augmentation as K
-from kornia.augmentation.container import AugmentationSequential
+from sentinel_wordlcover_pnoa_vndsm_datamodule import SentinelWorldCoverPNOAVnDSMDataModule
 
 from torchgeo.trainers import PixelwiseRegressionTask
 
@@ -14,21 +11,7 @@ import torch
 path = '/Users/diegobengochea/git/iberian.carbon/data/LightningDataModule_Data/'
 path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test'
 
-print('Declaring augmentation list')
-aug_dict = K.AugmentationSequential(
-    K.RandomHorizontalFlip(p=0.5, keepdim = True),
-    K.RandomVerticalFlip(p=0.5, keepdim = True),
-    K.RandomAffine(degrees=(0, 360), scale=(0.3,0.9), p=0.25, keepdim = True),
-    K.RandomGaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0), p=0.25, keepdim = True),
-    K.RandomResizedCrop(size=(256, 256), scale=(0.5, 1.0), p=0.25, keepdim = True),
-    data_keys=None,
-    keepdim = True,
-    same_on_batch = False, 
-    random_apply=3
-)
-
-dm = SentinelPNOADataModule(data_dir=path, transform=aug_dict)
-#dm = SentinelPNOADataModule(data_dir=path)
+dm = SentinelWorldCoverPNOAVnDSMDataModule(data_dir=path)
 
 print('Declaring the model')
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
