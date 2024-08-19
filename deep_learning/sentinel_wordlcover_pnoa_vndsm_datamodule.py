@@ -230,6 +230,9 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
         ndvi_dataset = Sentinel2NDVI(self.data_dir)
         vvvhratio_dataset = Sentinel1(self.data_dir)
 
+        print(rgbnir_dataset.bounds,swir_dataset.bounds,ndvi_dataset.bounds,vvvhratio_dataset.bounds)
+
+
         sentinel = SentinelWorldCoverYearlyComposites(rgbnir_dataset,swir_dataset,ndvi_dataset,vvvhratio_dataset)
 
         pnoa_dataset = PNOAnDSMV(self.data_dir)
