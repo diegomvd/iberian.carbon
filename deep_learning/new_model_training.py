@@ -29,6 +29,7 @@ unet_regression = PixelwiseRegressionTask(
 print('Defining lightning trainer')
 # Define a lightning trainer
 accelerator = 'mps' if torch.backends.mps.is_available() else 'cpu'
+default_device(torch.device("mps"))
 checkpoint_dir = ''
 checkpoint_callback = ModelCheckpoint(
     monitor='val_loss', dirpath=checkpoint_dir, save_top_k=1, save_last=True
