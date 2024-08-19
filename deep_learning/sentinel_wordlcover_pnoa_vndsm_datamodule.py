@@ -244,7 +244,7 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
         else:
             
             # This will downsample the canopy height data from 2,5m to 10m resolution.
-            sentinel_pnoa = KorniaIntersectionDataset(sentinel, pnoa_dataset, transforms=self.transform)
+            sentinel_pnoa = KorniaIntersectionDataset(sentinel, pnoa_dataset)
                         
             # Perform identical  splits by fixing the seed at fit and test stages to ensure that we are not training on test set.             
             self.train_dataset, self.val_dataset, self.test_dataset = random_grid_cell_assignment(
