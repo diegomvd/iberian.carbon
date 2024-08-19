@@ -37,7 +37,8 @@ class SentinelWorldCoverYearlyComposites(GeoDataset):
                 and returns a transformed version
         """
         self.dataset = dataset_rgbnir & dataset_swir & dataset_ndvi & dataset_vvvhratio
-        self._crs = dataset_rgbnir.crs
+        self._crs = dataset.crs
+        self._res = dataset.res
         super().__init__(transforms)
 
     def __getitem__(self, query: BoundingBox) -> dict[str,Any]:
