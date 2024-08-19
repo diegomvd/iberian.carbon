@@ -9,7 +9,7 @@ from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 import torch
 
 path = '/Users/diegobengochea/git/iberian.carbon/data/LightningDataModule_Data/'
-path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test'
+path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test_utm30'
 
 dm = SentinelWorldCoverPNOAVnDSMDataModule(data_dir=path)
 
