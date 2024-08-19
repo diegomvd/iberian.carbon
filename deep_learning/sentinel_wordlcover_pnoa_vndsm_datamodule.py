@@ -1,8 +1,10 @@
 from lightning import LightningDataModule
 from pnoa_vegetation_nDSM import PNOAnDSMV
 from kornia_intersection_dataset import KorniaIntersectionDataset
+import kornia.augmentation as K
 from sentinel_worldcover_composites import Sentinel1,Sentinel2NDVI,Sentinel2RGBNIR,Sentinel2SWIR, SentinelWorldCoverYearlyComposites
 import torch
+from torch import Tensor
 from torch.utils.data import DataLoader
 from torchgeo.samplers import RandomBatchGeoSampler, RandomGeoSampler, GridGeoSampler
 from torchgeo.datasets import IntersectionDataset, GeoDataset

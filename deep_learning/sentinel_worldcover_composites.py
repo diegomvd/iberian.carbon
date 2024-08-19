@@ -5,9 +5,15 @@ from typing import Any, Callable, Optional, Union
 from rasterio.crs import CRS
 
 import kornia.augmentation as K
-from torchgeo.datasets import RasterDataset, IntersectionDataset
+from torchgeo.datasets import RasterDataset, IntersectionDataset, GeoDataset
 from torchgeo.datasets.utils import BoundingBox
 from typing import Any, cast
+
+class SentinelComposite(RasterDataset):
+    is_image = True
+
+    filename_regex = r'ESA_WorldCover_10m_(?P<date>\d{4})'
+    date_format = "%Y"
 
 class SentinelWorldCoverYearlyComposites(GeoDataset):
     
@@ -33,7 +39,7 @@ class SentinelWorldCoverYearlyComposites(GeoDataset):
         self.dataset = dataset_rgbnir & dataset_swir & dataset_ndvi & dataset_vvvhratio
         super().__init__(transforms)
 
-    def __getitem__(self, query: BoundingBox) -> Dict[str,Any]:
+    def __getitem__(self, query: BoundingBox) -> dict[str,Any]:
 
         sample = self.dataset.__getitem__(query)
 
@@ -42,11 +48,6 @@ class SentinelWorldCoverYearlyComposites(GeoDataset):
 
         return sample    
 
-class SentinelComposite(RasterDataset):
-    is_image = True
-
-    filename_regex = r'ESA_WorldCover_10m_(?P<date>\d{4})'
-    date_format = "%Y"
 
 class Sentinel2RGBNIR(SentinelComposite):
     """Sentinel-2 RGBNIR annual composites for 2020 and 2021.
