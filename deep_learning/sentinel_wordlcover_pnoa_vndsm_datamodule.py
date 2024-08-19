@@ -178,12 +178,12 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
                 same_on_batch = False, 
                 random_apply=3
             ),
-            'image:' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+            'image' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
             'mask' : K.AugmentationSequential(PNOAVnDSMNoNan(),data_keys=None, keepdim=True)
         }
 
         self.aug = {
-            'image:' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+            'image' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
             'mask' : K.AugmentationSequential(PNOAVnDSMNoNan(),data_keys=None, keepdim=True)
         }
 
