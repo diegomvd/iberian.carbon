@@ -158,7 +158,7 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
 
         self.seed = seed
         self.predict_patch_size = predict_patch_size
-        self.collate_fn = collate_geo
+        self.collate_fn = self.collate_geo
 
         nodata = torch.tensor([NODATA[b] for b in SentinelWorldCoverYearlyComposites.all_bands])
         offset = torch.tensor([OFFSET[b] for b in SentinelWorldCoverYearlyComposites.all_bands])
