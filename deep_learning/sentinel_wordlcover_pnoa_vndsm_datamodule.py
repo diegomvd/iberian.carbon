@@ -96,7 +96,7 @@ class PNOAVnDSMNoNan(K.IntensityAugmentationBase2D):
 
     def __init__(self) -> None:
         super().__init__(p=1)
-        self.flags = {"nodata" : torch.tensor(-32767).view(-1,1,1)}
+        self.flags = {"nodata" : torch.tensor(-32767.0).view(-1,1,1)}
 
     def apply_transform(
         self,
@@ -218,11 +218,9 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
             print(batch)
             batch['image'] = aug['image']({'image':batch['image']})
             print(batch)
-
+            #  Need to find a less confusing solution than calling image the mask
             batch['mask'] = aug['mask']({'image':batch['mask']})
-            batch['mask'] = aug['mask']({'mask':batch['mask']})
-
-            
+        
 
             if 'general' in aug.keys():
                 # Image augmentation
