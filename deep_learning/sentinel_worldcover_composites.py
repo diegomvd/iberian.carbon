@@ -34,7 +34,7 @@ class SentinelWorldCoverYearlyComposites(IntersectionDataset):
                 and returns a transformed version
         """
         # First create an intersection dataset of the first 3 datasets
-        self.dataset = dataset_rgbnir & dataset_swir & dataset_ndvi
+        dataset = dataset_rgbnir & dataset_swir & dataset_ndvi
         # self._crs = self.dataset.crs
         # self._res = self.dataset.res
         super().__init__(dataset,dataset_vvvhratio)    
