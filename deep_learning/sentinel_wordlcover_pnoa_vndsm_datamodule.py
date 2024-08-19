@@ -276,3 +276,12 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
     def collate_geo(batch, *, collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None):
         collate_map = {torch.Tensor : _utils.collate.collate_tensor_fn, CRS : SentinelWorldCoverPNOAVnDSMDataModule.collate_crs_fn, BoundingBox : SentinelWorldCoverPNOAVnDSMDataModule.collate_bbox_fn}
         return _utils.collate.collate(batch, collate_fn_map=collate_map)
+
+    def transfer_batch_to_device(self, batch, device, dataloader_idx):
+        if isinstance(batch, dict):
+            # move all tensors in your custom data structure to the device
+            batch['image'] = batch['image'].to(device)
+            batch['mask'] = batch['mask'].to(device)
+        else:
+            batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
+        return batch    
