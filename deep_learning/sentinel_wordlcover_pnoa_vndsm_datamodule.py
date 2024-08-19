@@ -105,7 +105,7 @@ class PNOAVnDSMNoNan(K.IntensityAugmentationBase2D):
         flags: Dict[str, int],
         transform: Optional[Tensor] = None,
     ) -> Tensor:
-        input[(input - flags['nodata']) == 0] = float('nan') 
+        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = float('nan') 
         return input
 
 class SentinelWorldCoverRescale(K.IntensityAugmentationBase2D):
@@ -122,8 +122,8 @@ class SentinelWorldCoverRescale(K.IntensityAugmentationBase2D):
         flags: Dict[str, int],
         transform: Optional[Tensor] = None,
     ) -> Tensor:
-        input[(input - flags['nodata']) == 0] = float('nan') 
-        return input * flags['scale'] + flags['offset']        
+        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = float('nan') 
+        return input * flags['scale'].to(torch.device("mps")) + flags['offset'].to(torch.device("mps"))        
 
 class SentinelWorldCoverMinMaxNormalize(K.IntensityAugmentationBase2D):
     """Normalize Sentinel 1 GAMMA channels."""
@@ -139,7 +139,7 @@ class SentinelWorldCoverMinMaxNormalize(K.IntensityAugmentationBase2D):
         flags: Dict[str, int],
         transform: Optional[Tensor] = None,
     ) -> Tensor:
-        return (input - flags["min"]) / (flags["max"] - flags["min"] + 1e-8)        
+        return (input - flags["min"].to(torch.device("mps"))) / (flags["max"].to(torch.device("mps")) - flags["min"].to(torch.device("mps")) + 1e-8)        
 
 class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
 
