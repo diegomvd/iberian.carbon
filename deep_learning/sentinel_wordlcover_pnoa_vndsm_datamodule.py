@@ -230,9 +230,6 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
         ndvi_dataset = Sentinel2NDVI(self.data_dir)
         vvvhratio_dataset = Sentinel1(self.data_dir)
 
-        print(rgbnir_dataset.bounds,swir_dataset.bounds,ndvi_dataset.bounds,vvvhratio_dataset.bounds)
-
-
         sentinel = SentinelWorldCoverYearlyComposites(rgbnir_dataset,swir_dataset,ndvi_dataset,vvvhratio_dataset)
 
         pnoa_dataset = PNOAnDSMV(self.data_dir)
@@ -243,8 +240,6 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
                 self.predict_dataset, self.predict_patch_size, self.predict_patch_size
             ) 
         else:
-            print(sentinel.bounds)
-            print(pnoa_dataset.bounds)
 
             # This will downsample the canopy height data from 2,5m to 10m resolution.
             sentinel_pnoa = KorniaIntersectionDataset(sentinel, pnoa_dataset)
@@ -279,5 +274,5 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
 
     @staticmethod
     def collate_geo(batch, *, collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None):
-        collate_map = {torch.Tensor : _utils.collate.collate_tensor_fn, CRS : SentinelPNOADataModule.collate_crs_fn, BoundingBox : SentinelPNOADataModule.collate_bbox_fn}
+        collate_map = {torch.Tensor : _utils.collate.collate_tensor_fn, CRS : SentinelWorldCoverPNOAVnDSMDataModule.collate_crs_fn, BoundingBox : SentinelWorldCoverPNOAVnDSMDataModule.collate_bbox_fn}
         return _utils.collate.collate(batch, collate_fn_map=collate_map)
