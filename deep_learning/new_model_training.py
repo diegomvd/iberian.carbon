@@ -37,8 +37,6 @@ early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0.0001, pa
 tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
-print(torch.mps.device_count())
-
 trainer = Trainer(
     accelerator=accelerator,
     devices='0',
