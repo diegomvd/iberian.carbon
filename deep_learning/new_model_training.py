@@ -39,7 +39,7 @@ csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
 trainer = Trainer(
     accelerator=accelerator,
-    devices='0',
+    devices=0,
     callbacks=[checkpoint_callback, early_stopping_callback],
     log_every_n_steps=50,
     logger=tb_logger,
