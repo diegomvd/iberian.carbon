@@ -225,14 +225,22 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
 
     def setup(self, stage: str):
 
+        print(self.data_dir)
+
         rgbnir_dataset = Sentinel2RGBNIR(self.data_dir)
         swir_dataset = Sentinel2SWIR(self.data_dir)
         ndvi_dataset = Sentinel2NDVI(self.data_dir)
         vvvhratio_dataset = Sentinel1(self.data_dir)
 
+        print(rgbnir_dataset.crs,swir_dataset.crs,ndvi_dataset.crs,vvvhratio_dataset.crs)
+
         sentinel = SentinelWorldCoverYearlyComposites(rgbnir_dataset,swir_dataset,ndvi_dataset,vvvhratio_dataset)
 
+        print(sentinel.crs)
+
         pnoa_dataset = PNOAnDSMV(self.data_dir)
+
+        print(pnoa_dataset.crs)
         
 
         # Do not perform image augmentations for predicting, rescaling and normalization is already done within dataset for sentinel data.
