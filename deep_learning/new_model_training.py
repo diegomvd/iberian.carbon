@@ -29,7 +29,6 @@ unet_regression = PixelwiseRegressionTask(
 print('Defining lightning trainer')
 # Define a lightning trainer
 accelerator = 'mps' if torch.backends.mps.is_available() else 'cpu'
-default_device(torch.device("mps"))
 checkpoint_dir = ''
 checkpoint_callback = ModelCheckpoint(
     monitor='val_loss', dirpath=checkpoint_dir, save_top_k=1, save_last=True
@@ -41,6 +40,7 @@ csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
 trainer = Trainer(
     accelerator=accelerator,
+    devices='mps:0',
     callbacks=[checkpoint_callback, early_stopping_callback],
     log_every_n_steps=50,
     logger=tb_logger,
