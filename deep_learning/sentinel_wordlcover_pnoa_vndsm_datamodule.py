@@ -214,12 +214,14 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
 
 
             # Assign nan to nodata values
-            batch['mask'] = aug['mask']({'mask':batch['mask']})
-            print(batch)
             # Image rescaling and normalization
             print(batch)
             batch['image'] = aug['image']({'image':batch['image']})
             print(batch)
+
+            batch['mask'] = aug['mask']({'image':batch['mask']})
+            batch['mask'] = aug['mask']({'mask':batch['mask']})
+
             
 
             if 'general' in aug.keys():
