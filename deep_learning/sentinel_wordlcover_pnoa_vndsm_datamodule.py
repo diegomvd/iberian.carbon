@@ -172,7 +172,7 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
                 K.RandomVerticalFlip(p=0.5, keepdim = True),
                 K.RandomAffine(degrees=(0, 360), scale=(0.3,0.9), p=0.25, keepdim = True),
                 K.RandomGaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0), p=0.25, keepdim = True),
-                K.RandomResizedCrop(size=_to_tuple(self.patch_size), scale=(0.5, 1.0), p=0.25, keepdim = True),
+                K.RandomResizedCrop(size=(self.patch_size,self.patch_size), scale=(0.5, 1.0), p=0.25, keepdim = True),
                 data_keys=None,
                 keepdim = True,
                 same_on_batch = False, 
