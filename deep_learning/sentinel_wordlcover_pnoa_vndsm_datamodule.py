@@ -172,7 +172,6 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
                 K.RandomVerticalFlip(p=0.5, keepdim = True),
                 K.RandomAffine(degrees=(0, 360), scale=(0.3,0.9), p=0.25, keepdim = True),
                 K.RandomGaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0), p=0.25, keepdim = True),
-                K.RandomResizedCrop(size=(self.patch_size,self.patch_size), scale=(0.5, 1.0), p=0.25, keepdim = True),
                 data_keys=None,
                 keepdim = True,
                 same_on_batch = False, 
@@ -212,16 +211,17 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
             # TODO: EDIT this part to make it compatible with our dataset
             aug = self._valid_attribute(f"{split}_aug", "aug")
 
+            # Remove geo  information
+            del  batch['crs']
+            del  batch['bbox']
 
             # Assign nan to nodata values
             # Image rescaling and normalization
-            print(batch)
-            batch['image'] = aug['image']({'image':batch['image']})
-            print(batch)
-            #  Need to find a less confusing solution than calling image the mask
-            batch['mask'] = aug['mask']({'image':batch['mask']})
-        
+            batch['image'] = aug['image']({'image':batch['image']})['image']
 
+            #  Need to find a less confusing solution than calling image the mask
+            batch['mask'] = aug['mask']({'image':batch['mask']})['image']
+            
             if 'general' in aug.keys():
                 # Image augmentation
                 batch = aug['general'](batch)
