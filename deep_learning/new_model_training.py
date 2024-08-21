@@ -36,12 +36,12 @@ tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
 trainer = Trainer(
-    check_val_every_n_epoch=10,
+    check_val_every_n_epoch=1,
     accelerator=accelerator,
     devices="auto",
     callbacks=[checkpoint_callback, early_stopping_callback],
     log_every_n_steps=50,
-    logger=tb_logger,
+    logger=csv_logger,
     max_epochs=1000,
 )
 
