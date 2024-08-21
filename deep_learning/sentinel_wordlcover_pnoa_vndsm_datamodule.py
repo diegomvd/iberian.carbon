@@ -91,7 +91,7 @@ MAXS = {
     'ratio': 20.535,
 }
 
-class PNOAVnDSMNoNan(K.IntensityAugmentationBase2D):
+class PNOAVnDSMChangeNan(K.IntensityAugmentationBase2D):
     """Rescale raster values according to scale and offset parameters"""
 
     def __init__(self) -> None:
@@ -105,25 +105,8 @@ class PNOAVnDSMNoNan(K.IntensityAugmentationBase2D):
         flags: Dict[str, int],
         transform: Optional[Tensor] = None,
     ) -> Tensor:
-        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = float('nan') 
+        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = -999.999 
         return input
-
-class PNOAVnDSMNoNan(K.IntensityAugmentationBase2D):
-    """Rescale raster values according to scale and offset parameters"""
-
-    def __init__(self) -> None:
-        super().__init__(p=1)
-        self.flags = {"nodata" : torch.tensor(-32767.0).view(-1,1,1)}
-
-    def apply_transform(
-        self,
-        input: Tensor,
-        params: Dict[str, Tensor],
-        flags: Dict[str, int],
-        transform: Optional[Tensor] = None,
-    ) -> Tensor:
-        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = float('nan') 
-        return input       
 
 class PNOAVnDSMRemoveAbnormalHeight(K.IntensityAugmentationBase2D):
     """Rescale raster values according to scale and offset parameters"""
@@ -141,7 +124,7 @@ class PNOAVnDSMRemoveAbnormalHeight(K.IntensityAugmentationBase2D):
         flags: Dict[str, int],
         transform: Optional[Tensor] = None,
     ) -> Tensor:
-        input[(input > flags['hmax'].to(torch.device("mps")))] = float('nan') 
+        input[(input > flags['hmax'].to(torch.device("mps")))] = -999.999 
         return input   
 
 class SentinelWorldCoverRescale(K.IntensityAugmentationBase2D):
@@ -182,6 +165,7 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
     seed = 4356578
     predict_patch_size = 12000
 
+    # Could benefit from a parameter Nan in target to make sure that nodata value is not hardcoded.
     def __init__(self, data_dir: str = "path/to/dir", patch_size: int = 256, batch_size: int = 128, length: int = 10000, num_workers: int = 0, seed: int = 42, predict_patch_size: int = 12000):
 
         #  This is used to build the actual dataset.    
@@ -214,12 +198,12 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
                 random_apply=3
             ),
             'image' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
-            'mask' : K.AugmentationSequential(PNOAVnDSMNoNan(),PNOAVnDSMRemoveAbnormalHeight(),data_keys=None, keepdim=True)
+            'mask' : K.AugmentationSequential(PNOAVnDSMChangeNan(),PNOAVnDSMRemoveAbnormalHeight(),data_keys=None, keepdim=True)
         }
 
         self.aug = {
             'image' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
-            'mask' : K.AugmentationSequential(PNOAVnDSMNoNan(),PNOAVnDSMRemoveAbnormalHeight(),data_keys=None, keepdim=True)
+            'mask' : K.AugmentationSequential(PNOAVnDSMChangeNan(),PNOAVnDSMRemoveAbnormalHeight(),data_keys=None, keepdim=True)
         }
 
     def on_after_batch_transfer(

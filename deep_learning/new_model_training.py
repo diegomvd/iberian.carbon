@@ -1,7 +1,6 @@
 from sentinel_wordlcover_pnoa_vndsm_datamodule import SentinelWorldCoverPNOAVnDSMDataModule
 
-from torchgeo.trainers import PixelwiseRegressionTask
-
+from nan_robust_regression import NanRobustPixelWiseRegressionTask
 from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -14,14 +13,15 @@ path = '/Users/diegobengochea/git/iberian.carbon/data/LightningDataModule_Data_U
 dm = SentinelWorldCoverPNOAVnDSMDataModule(data_dir=path)
 
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
-unet_regression = PixelwiseRegressionTask(
+unet_regression = NanRobustPixelWiseRegressionTask(
     model='unet',
     backbone='resnet18',
     weights=None,
     in_channels=12, # Inventing an extra one can help getting pre trained weights for sentinel2
     num_outputs=1, 
     loss = 'mse',
-    lr = 0.0001,
+    nan_value=-999.999,
+    lr = 0.001,
     patience =10    
 )
 
@@ -36,6 +36,7 @@ tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
 trainer = Trainer(
+    check_val_every_n_epoch=10,
     accelerator=accelerator,
     devices="auto",
     callbacks=[checkpoint_callback, early_stopping_callback],
