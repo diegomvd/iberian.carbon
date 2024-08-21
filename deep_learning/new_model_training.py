@@ -21,7 +21,7 @@ unet_regression = PixelwiseRegressionTask(
     in_channels=12, # Inventing an extra one can help getting pre trained weights for sentinel2
     num_outputs=1, 
     loss = 'mse',
-    lr = 0.001,
+    lr = 0.0001,
     patience =10    
 )
 
@@ -31,7 +31,7 @@ checkpoint_dir = ''
 checkpoint_callback = ModelCheckpoint(
     monitor='val_loss', dirpath=checkpoint_dir, save_top_k=1, save_last=True
 )
-early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=20) # which min_delta to use?
+early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0, patience=20) # which min_delta to use?
 tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
