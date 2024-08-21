@@ -108,6 +108,42 @@ class PNOAVnDSMNoNan(K.IntensityAugmentationBase2D):
         input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = float('nan') 
         return input
 
+class PNOAVnDSMNoNan(K.IntensityAugmentationBase2D):
+    """Rescale raster values according to scale and offset parameters"""
+
+    def __init__(self) -> None:
+        super().__init__(p=1)
+        self.flags = {"nodata" : torch.tensor(-32767.0).view(-1,1,1)}
+
+    def apply_transform(
+        self,
+        input: Tensor,
+        params: Dict[str, Tensor],
+        flags: Dict[str, int],
+        transform: Optional[Tensor] = None,
+    ) -> Tensor:
+        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = float('nan') 
+        return input       
+
+class PNOAVnDSMRemoveAbnormalHeight(K.IntensityAugmentationBase2D):
+    """Rescale raster values according to scale and offset parameters"""
+
+    hmax = 60.0 # Conserative height threshold
+
+    def __init__(self) -> None:
+        super().__init__(p=1)
+        self.flags = {"hmax" : torch.tensor(hmax).view(-1,1,1)}
+
+    def apply_transform(
+        self,
+        input: Tensor,
+        params: Dict[str, Tensor],
+        flags: Dict[str, int],
+        transform: Optional[Tensor] = None,
+    ) -> Tensor:
+        input[(input > flags['hmax'].to(torch.device("mps")))] = float('nan') 
+        return input   
+
 class SentinelWorldCoverRescale(K.IntensityAugmentationBase2D):
     """Rescale raster values according to scale and offset parameters"""
 
@@ -178,12 +214,12 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
                 random_apply=3
             ),
             'image' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
-            'mask' : K.AugmentationSequential(PNOAVnDSMNoNan(),data_keys=None, keepdim=True)
+            'mask' : K.AugmentationSequential(PNOAVnDSMNoNan(),PNOAVnDSMRemoveAbnormalHeight(),data_keys=None, keepdim=True)
         }
 
         self.aug = {
             'image' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
-            'mask' : K.AugmentationSequential(PNOAVnDSMNoNan(),data_keys=None, keepdim=True)
+            'mask' : K.AugmentationSequential(PNOAVnDSMNoNan(),PNOAVnDSMRemoveAbnormalHeight(),data_keys=None, keepdim=True)
         }
 
     def on_after_batch_transfer(
