@@ -13,7 +13,6 @@ path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test_utm30'
 
 dm = SentinelWorldCoverPNOAVnDSMDataModule(data_dir=path)
 
-print('Declaring the model')
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
 unet_regression = PixelwiseRegressionTask(
     model='unet',
@@ -26,14 +25,13 @@ unet_regression = PixelwiseRegressionTask(
     patience =10    
 )
 
-print('Defining lightning trainer')
 # Define a lightning trainer
 accelerator = 'mps' if torch.backends.mps.is_available() else 'cpu'
 checkpoint_dir = ''
 checkpoint_callback = ModelCheckpoint(
     monitor='val_loss', dirpath=checkpoint_dir, save_top_k=1, save_last=True
 )
-early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=10) # which min_delta to use?
+early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=20) # which min_delta to use?
 tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
@@ -45,7 +43,5 @@ trainer = Trainer(
     logger=tb_logger,
     max_epochs=1000,
 )
-
-print('Starting training process')
 
 trainer.fit(unet_regression, dm)
