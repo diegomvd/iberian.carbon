@@ -61,8 +61,8 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
            *learning_rate* and *learning_rate_schedule_patience* were renamed to
            *lr* and *patience*.
         """
-        self.weights = weights
-        super().__init__(ignore="weights")
+        self.nan_value = nan_value
+        super().__init__(model=model,backbone=backbone,weights=weights,in_channels=in_channels,num_outputs=num_outputs,num_filters=num_filters,loss=loss,lr=lr,patience=patience,freeze_backbone=freeze_backbone,freeze_decoder=freeze_decoder)
 
     def configure_losses(self) -> None:
         """Initialize the loss criterion.
@@ -109,7 +109,7 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
         y_hat = self(x)
         if y_hat.ndim != y.ndim:
             y = y.unsqueeze(dim=1)
-        y_hat, y = _remove_nan_in_target(y_hat,y,self.hparams['nan_value'])
+        y_hat, y = _remove_nan_in_target(y_hat,y,self.nan_value)
         loss: Tensor = self.criterion(y_hat, y)
         self.log("train_loss", loss)
         self.train_metrics(y_hat, y)
@@ -134,7 +134,7 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
             y_hat = self(x)
             if y_hat.ndim != y.ndim:
                 y = y.unsqueeze(dim=1)
-            y_hat, y = _remove_nan_in_target(y_hat,y,self.hparams['nan_value'])
+            y_hat, y = _remove_nan_in_target(y_hat,y,self.nan_value)
             loss = self.criterion(y_hat, y)
             self.log("val_loss", loss)
             self.val_metrics(y_hat, y)
@@ -182,7 +182,7 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
         y_hat = self(x)
         if y_hat.ndim != y.ndim:
             y = y.unsqueeze(dim=1)
-        y_hat, y = _remove_nan_in_target(y_hat,y,self.hparams['nan_value'])
+        y_hat, y = _remove_nan_in_target(y_hat,y,self.nan_value)
         loss = self.criterion(y_hat, y)
         self.log("test_loss", loss)
         self.test_metrics(y_hat, y)
