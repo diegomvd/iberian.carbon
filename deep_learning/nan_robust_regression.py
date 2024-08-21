@@ -81,14 +81,12 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
                 "Currently, supports 'mse' or 'mae' loss."
             )
 
-    def _remove_nan_in_target(y_hat: Tensor, y: Tensor, nan_value: float) -> (Tensor, Tensor):
+    def _remove_nan_in_target(self, y_hat: Tensor, y: Tensor, nan_value: float) -> (Tensor, Tensor):
         indices = torch.nonzero(y==nan_value)
         y_hat[indices] = nan_value
         y = y[y!=nan_value]
         y_hat = y_hat[y_hat!=nan_value]
         return y_hat, y
-
-
 
     def training_step(
         self, batch: Any, batch_idx: int, dataloader_idx: int = 0
