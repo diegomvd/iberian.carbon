@@ -25,13 +25,19 @@ for year in [2020,2021]:
             tile_list = []
             fileids = set()
             print('here')
+
             for pnoa_polygons in Path(pnoa_path).rglob('*.shp'):
+                # Each shapefile contains all rectangular polygons of the area sampled by the plane.
+
                 utm = re.findall('_HU(..)_',str(pnoa_polygons))[0]
-                print('utm')
                 pnoa_gdf = gpd.read_file(pnoa_polygons)
                 intersecting_tiles = pnoa_gdf.intersects(polygon_sentinel)
+
+                # Select only the polygons that intersect the sentinel tile
                 pnoa_intersecting = pnoa_gdf[intersecting_tiles]
+                #  Filter by year
                 pnoa_intersecting = pnoa_intersecting[ pnoa_intersecting.FECHA == str(year)]
+                # Add file names of the PNOA files to intersect.
                 merging_files = pnoa_intersecting['PATH'].apply(lambda x: '{}{}'.format(pnoa_dataddir,x.split('/')[-1]) ).to_list()
 
 
@@ -51,7 +57,7 @@ for year in [2020,2021]:
                         width=image.shape[-1],
                         dtype=np.float32,
                         count=1,
-                        nodata=-32767,
+                        nodata=-32767.0,
                         crs="EPSG:258{}".format(utm),
                         transform=transform,
                         compress='lzw'
