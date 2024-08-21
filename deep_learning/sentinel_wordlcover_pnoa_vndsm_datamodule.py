@@ -132,7 +132,7 @@ class PNOAVnDSMRemoveAbnormalHeight(K.IntensityAugmentationBase2D):
 
     def __init__(self) -> None:
         super().__init__(p=1)
-        self.flags = {"hmax" : torch.tensor(hmax).view(-1,1,1)}
+        self.flags = {"hmax" : torch.tensor(self.hmax).view(-1,1,1)}
 
     def apply_transform(
         self,
