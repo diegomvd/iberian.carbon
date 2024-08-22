@@ -72,21 +72,19 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
         """
         loss: str = self.hparams["loss"]
         if loss == "mse":
-            self.criterion: nn.Module = nn.MSELoss(reduction=None)
+            self.criterion: nn.Module = nn.MSELoss(reduction='none')
         elif loss == "mae":
-            self.criterion = nn.L1Loss(reduction=None)
+            self.criterion = nn.L1Loss(reduction='none')
         else:
             raise ValueError(
                 f"Loss type '{loss}' is not valid. "
                 "Currently, supports 'mse' or 'mae' loss."
             )
 
-    def _remove_nan_in_target(self, y_hat: Tensor, y: Tensor, nan_value: float) -> (Tensor, Tensor):
-        indices = torch.nonzero(y==nan_value)
-        y_hat[indices] = nan_value
-        y = y[y!=nan_value]
-        y_hat = y_hat[y_hat!=nan_value]
-        return y_hat, y
+    def _nan_robust_loss_reduction(self, loss: Tensor, y: Tensor, nan_value: float) -> Tensor:
+        y = y!=nan_value
+        loss = torch.masked_select(loss,y)
+        return torch.nanmean(loss) 
 
     def training_step(
         self, batch: Any, batch_idx: int, dataloader_idx: int = 0
@@ -107,8 +105,8 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
         y_hat = self(x)
         if y_hat.ndim != y.ndim:
             y = y.unsqueeze(dim=1)
-        y_hat, y = self._remove_nan_in_target(y_hat,y,self.nan_value)
         loss: Tensor = self.criterion(y_hat, y)
+        loss = _nan_robust_loss_reduction(loss,y,self.nan_value)
         self.log("train_loss", loss)
         self.train_metrics(y_hat, y)
         self.log_dict(self.train_metrics)
@@ -132,8 +130,8 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
             y_hat = self(x)
             if y_hat.ndim != y.ndim:
                 y = y.unsqueeze(dim=1)
-            y_hat, y = self._remove_nan_in_target(y_hat,y,self.nan_value)
             loss = self.criterion(y_hat, y)
+            loss = self._nan_robust_loss_reduction(loss,y,self.nan_value)
             self.log("val_loss", loss)
             self.val_metrics(y_hat, y)
             self.log_dict(self.val_metrics)
@@ -180,8 +178,8 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
         y_hat = self(x)
         if y_hat.ndim != y.ndim:
             y = y.unsqueeze(dim=1)
-        y_hat, y = self._remove_nan_in_target(y_hat,y,self.nan_value)
         loss = self.criterion(y_hat, y)
+        loss = _nan_robust_loss_reduction(loss,y,self.nan_value)
         self.log("test_loss", loss)
         self.test_metrics(y_hat, y)
         self.log_dict(self.test_metrics)        
