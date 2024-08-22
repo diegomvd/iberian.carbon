@@ -106,7 +106,7 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
         if y_hat.ndim != y.ndim:
             y = y.unsqueeze(dim=1)
         loss: Tensor = self.criterion(y_hat, y)
-        loss = _nan_robust_loss_reduction(loss,y,self.nan_value)
+        loss = self._nan_robust_loss_reduction(loss,y,self.nan_value)
         self.log("train_loss", loss)
         self.train_metrics(y_hat, y)
         self.log_dict(self.train_metrics)
@@ -179,7 +179,7 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
         if y_hat.ndim != y.ndim:
             y = y.unsqueeze(dim=1)
         loss = self.criterion(y_hat, y)
-        loss = _nan_robust_loss_reduction(loss,y,self.nan_value)
+        loss = self._nan_robust_loss_reduction(loss,y,self.nan_value)
         self.log("test_loss", loss)
         self.test_metrics(y_hat, y)
         self.log_dict(self.test_metrics)        
