@@ -9,6 +9,7 @@ from torchvision.models._api import WeightsEnum
 from torchgeo.datasets import unbind_samples
 
 from nan_robust_regression_metrics import NanRobustMeanAbsoluteError, NanRobustMeanAbsolutePercentageError, NanRobustMeanSquaredError
+from torchmetrics import MetricCollection
 
 
 class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
