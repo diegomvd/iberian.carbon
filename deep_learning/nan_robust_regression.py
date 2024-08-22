@@ -98,7 +98,7 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
             {
                 'RMSE': NanRobustMeanSquaredError(squared=False),
                 'MSE': NanRobustMeanSquaredError(squared=True),
-                'MAE': MeanAbsoluteError(),
+                'MAE': NanRobustMeanAbsoluteError(),
                 'MAPE': NanRobustMeanAbsolutePercentageError(),
             }
         )
