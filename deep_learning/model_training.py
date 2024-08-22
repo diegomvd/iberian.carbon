@@ -1,4 +1,4 @@
-from sentinel_wordlcover_pnoa_vndsm_datamodule import SentinelWorldCoverPNOAVnDSMDataModule
+from sentinel_worldcover_pnoa_vndsm_datamodule import SentinelWorldCoverPNOAVnDSMDataModule
 
 from nan_robust_regression import NanRobustPixelWiseRegressionTask
 from lightning.pytorch import Trainer
