@@ -10,6 +10,8 @@ class PNOAnDSMV(RasterDataset):
     filename_regex = r'PNOA_(?P<date>\d{4})'
     date_format = "%Y"
 
+    nan_value = -32767.0
+
 
 
  

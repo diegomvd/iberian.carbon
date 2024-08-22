@@ -8,6 +8,8 @@ from torchvision.models._api import WeightsEnum
 
 from torchgeo.datasets import unbind_samples
 
+from nan_robust_regression_metrics import NanRobustMeanAbsoluteError, NanRobustMeanAbsolutePercentageError, NanRobustMeanSquaredError
+
 
 class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
 
@@ -81,10 +83,32 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
                 "Currently, supports 'mse' or 'mae' loss."
             )
 
+    def configure_metrics(self) -> None:
+        """Initialize the performance metrics.
+
+        * :class:`~torchmetrics.MeanSquaredError`: The average of the squared
+          differences between the predicted and actual values (MSE) and its
+          square root (RMSE). Lower values are better.
+        * :class:`~torchmetrics.MeanAbsoluteError`: The average of the absolute
+          differences between the predicted and actual values (MAE).
+          Lower values are better.
+        """
+        metrics = MetricCollection(
+            {
+                'RMSE': NanRobustMeanSquaredError(squared=False),
+                'MSE': NanRobustMeanSquaredError(squared=True),
+                'MAE': MeanAbsoluteError(),
+                'MAPE': NanRobustMeanAbsolutePercentageError(),
+            }
+        )
+        self.train_metrics = metrics.clone(prefix='train_')
+        self.val_metrics = metrics.clone(prefix='val_')
+        self.test_metrics = metrics.clone(prefix='test_')
+
     def _nan_robust_loss_reduction(self, loss: Tensor, y: Tensor, nan_value: float) -> Tensor:
         y = y!=nan_value
         loss = torch.masked_select(loss,y)
-        return torch.nanmean(loss) 
+        return torch.mean(loss) 
 
     def training_step(
         self, batch: Any, batch_idx: int, dataloader_idx: int = 0

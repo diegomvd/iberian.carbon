@@ -20,7 +20,7 @@ unet_regression = NanRobustPixelWiseRegressionTask(
     in_channels=12, # Inventing an extra one can help getting pre trained weights for sentinel2
     num_outputs=1, 
     loss = 'mse',
-    nan_value=-999.999,
+    nan_value=dm.nan_value,
     lr = 0.001,
     patience =10    
 )
