@@ -45,4 +45,12 @@ trainer = Trainer(
     max_epochs=1000,
 )
 
-trainer.fit(unet_regression, dm)
+resume_from_checkpoint = True
+
+if resume_from_checkpoint:
+    trainer.fit(unet_regression, ckpt_path="/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=54-step=4290.ckpt")
+else:
+    trainer.fit(unet_regression, dm)
+
+
+
