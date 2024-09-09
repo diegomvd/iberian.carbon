@@ -251,18 +251,11 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
             print('Prediction stage')
             # Build the prediction dataset gathering copernicus data for portugal and spain 2020-2021
             self.predict_dataset = KorniaIntersectionDataset(sentinel, pnoa_dataset)
-            print(self.predict_dataset)
-            # self.predict_sampler = GridGeoSampler(
-            #     self.predict_dataset, self.predict_patch_size, self.predict_patch_size
-            # ) 
+        
             self.predict_sampler = GridGeoSampler(
                 self.predict_dataset, 3200, 3200
             ) 
-            # print(self.predict_sampler.roi)
-            # print(self.predict_sampler.hits)
-            # print(self.predict_sampler)
-            # print(self.predict_sampler.__len__())
-            # print(self.predict_sampler.__iter__())
+            
         else:
 
             # This will downsample the canopy height data from 2,5m to 10m resolution.
