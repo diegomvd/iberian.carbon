@@ -252,8 +252,11 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
             # Build the prediction dataset gathering copernicus data for portugal and spain 2020-2021
             self.predict_dataset = KorniaIntersectionDataset(sentinel, pnoa_dataset)
             print(self.predict_dataset)
+            # self.predict_sampler = GridGeoSampler(
+            #     self.predict_dataset, self.predict_patch_size, self.predict_patch_size
+            # ) 
             self.predict_sampler = GridGeoSampler(
-                self.predict_dataset, self.predict_patch_size, self.predict_patch_size
+                self.predict_dataset, self.predict_patch_size, 1
             ) 
             print(self.predict_sampler)
             print(self.predict_sampler.__len__())
