@@ -256,8 +256,8 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
                 self.predict_dataset, self.predict_patch_size, self.predict_patch_size
             ) 
             print(self.predict_sampler)
-            print(self.predict_sampler._len_())
-            print(self.predict_sampler._iter_())
+            print(self.predict_sampler.__len__())
+            print(self.predict_sampler.__iter__())
         else:
 
             # This will downsample the canopy height data from 2,5m to 10m resolution.
