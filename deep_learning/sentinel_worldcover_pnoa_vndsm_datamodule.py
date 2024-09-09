@@ -248,11 +248,14 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
         self.nan_value = pnoa_dataset.nan_value
 
         if stage in ['predict']:
+            print('Prediction stage')
             # Build the prediction dataset gathering copernicus data for portugal and spain 2020-2021
             self.predict_dataset = KorniaIntersectionDataset(sentinel, pnoa_dataset)
+            print(self.predict_dataset)
             self.predict_sampler = GridGeoSampler(
                 self.predict_dataset, self.predict_patch_size, self.predict_patch_size
             ) 
+            print(self.predict_sampler)
         else:
 
             # This will downsample the canopy height data from 2,5m to 10m resolution.
