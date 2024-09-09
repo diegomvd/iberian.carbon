@@ -175,6 +175,7 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
             'general' : K.AugmentationSequential(
                 K.RandomHorizontalFlip(p=0.5, keepdim = True),
                 K.RandomVerticalFlip(p=0.5, keepdim = True),
+                #  Don't know if these augmentations make actual sense in a pixelwise regression context...
                 K.RandomAffine(degrees=(0, 360), scale=(0.3,0.9), p=0.25, keepdim = True),
                 K.RandomGaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0), p=0.25, keepdim = True),
                 data_keys=None,
@@ -247,6 +248,7 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
         self.nan_value = pnoa_dataset.nan_value
 
         if stage in ['predict']:
+            # Build the prediction dataset gathering copernicus data for portugal and spain 2020-2021
             self.predict_dataset = KorniaIntersectionDataset(sentinel, pnoa_dataset)
             self.predict_sampler = GridGeoSampler(
                 self.predict_dataset, self.predict_patch_size, self.predict_patch_size
