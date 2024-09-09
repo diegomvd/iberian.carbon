@@ -256,8 +256,10 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
             #     self.predict_dataset, self.predict_patch_size, self.predict_patch_size
             # ) 
             self.predict_sampler = GridGeoSampler(
-                self.predict_dataset, self.predict_patch_size, 1
+                self.predict_dataset, 120, 1
             ) 
+            print(self.predict_sampler.roi)
+            print(self.predict_sampler.hits)
             print(self.predict_sampler)
             print(self.predict_sampler.__len__())
             print(self.predict_sampler.__iter__())
