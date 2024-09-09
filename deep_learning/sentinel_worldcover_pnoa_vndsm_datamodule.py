@@ -252,7 +252,7 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
             self.predict_dataset = KorniaIntersectionDataset(sentinel, pnoa_dataset)
         
             self.predict_sampler = GridGeoSampler(
-                self.predict_dataset, 1280, 1280
+                self.predict_dataset, 256, 256
             ) 
             
         else:
