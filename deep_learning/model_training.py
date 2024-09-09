@@ -46,12 +46,16 @@ trainer = Trainer(
 )
 
 resume_from_checkpoint = True
-test_stage = True
+stage = 'predict' # 'test'
+
 
 if resume_from_checkpoint:
-    if test_stage:
+    if stage=='test':
         test_metrics = trainer.test(unet_regression, datamodule = dm, ckpt_path ="/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=82-step=6474.ckpt")
         print(test_metrics)
+    elif stage == 'predict':
+        prediction = trainer.predict(unet_regression, datamodule = dm, ckpt_path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=82-step=6474.ckpt")
+        print(prediction)
     else:
         trainer.fit(unet_regression, datamodule=dm, ckpt_path="/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=82-step=6474.ckpt")
 else:
