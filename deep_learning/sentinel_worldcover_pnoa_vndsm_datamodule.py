@@ -147,7 +147,7 @@ class SentinelWorldCoverMinMaxNormalize(K.IntensityAugmentationBase2D):
 class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
 
     seed = 4356578
-    predict_patch_size = 12000
+    predict_patch_size = 1000
     nan_value = -32767.0
 
     # Could benefit from a parameter Nan in target to make sure that nodata value is not hardcoded.
@@ -256,6 +256,8 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
                 self.predict_dataset, self.predict_patch_size, self.predict_patch_size
             ) 
             print(self.predict_sampler)
+            print(self.predict_sampler._len_())
+            print(self.predict_sampler._iter_())
         else:
 
             # This will downsample the canopy height data from 2,5m to 10m resolution.
