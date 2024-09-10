@@ -8,7 +8,7 @@ from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 import torch
 
 path = '/Users/diegobengochea/git/iberian.carbon/data/LightningDataModule_Data_UTM30/'
-# path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test_utm30'
+path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test_utm30'
 
 dm = SentinelWorldCoverPNOAVnDSMDataModule(data_dir=path)
 
@@ -45,8 +45,10 @@ trainer = Trainer(
     max_epochs=1000,
 )
 
-resume_from_checkpoint = True
+resume_from_checkpoint = False
 stage = 'predict' # 'test'
+stage = 'test'
+stage = 'fit'
 
 
 if resume_from_checkpoint:

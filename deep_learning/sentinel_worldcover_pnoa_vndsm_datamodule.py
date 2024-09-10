@@ -92,11 +92,11 @@ MAXS = {
 }
 
 class PNOAVnDSMRemoveAbnormalHeight(K.IntensityAugmentationBase2D):
-    """Rescale raster values according to scale and offset parameters"""
+    """Remove height outliers by assigning a no-data value equal to -1.0 meters"""
 
     hmax = 60.0 # Conserative height threshold
 
-    def __init__(self, hmax: float = 60.0, nan_value: float = -32767.0 ) -> None:
+    def __init__(self, hmax: float = 60.0, nan_value: float = -1.0 ) -> None:
         super().__init__(p=1)
         self.nan_value = nan_value
         self.flags = {"hmax" : torch.tensor(hmax).view(-1,1,1)}
@@ -110,6 +110,24 @@ class PNOAVnDSMRemoveAbnormalHeight(K.IntensityAugmentationBase2D):
     ) -> Tensor:
         input[(input > flags['hmax'].to(torch.device("mps")))] = self.nan_value
         return input   
+
+class PNOAVnDSMInputNoHeightInArtificialSurfaces(K.IntensityAugmentationBase2D):
+    """Artificial surfaces are associated with a value of -32767.0, input a value of 0.0 meters so the NN learns to identify absence of vegetation because of artificial surface"""
+
+    def __init__(self, nan_value: float = -32767.0 ) -> None:
+        super().__init__(p=1)
+        self.nan_value = nan_value
+        self.flags = {"nodata" : torch.tensor(nan_value).view(-1,1,1)}
+
+    def apply_transform(
+        self,
+        input: Tensor,
+        params: Dict[str, Tensor],
+        flags: Dict[str, int],
+        transform: Optional[Tensor] = None,
+    ) -> Tensor:
+        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = 0.0
+        return input         
 
 class SentinelWorldCoverRescale(K.IntensityAugmentationBase2D):
     """Rescale raster values according to scale and offset parameters"""
@@ -125,7 +143,8 @@ class SentinelWorldCoverRescale(K.IntensityAugmentationBase2D):
         flags: Dict[str, int],
         transform: Optional[Tensor] = None,
     ) -> Tensor:
-        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = float('nan') 
+        # Let NaN values be as they are in the data
+        #input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = float('nan') 
         return input * flags['scale'].to(torch.device("mps")) + flags['offset'].to(torch.device("mps"))        
 
 class SentinelWorldCoverMinMaxNormalize(K.IntensityAugmentationBase2D):
@@ -148,7 +167,7 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
 
     seed = 4356578
     predict_patch_size = 1000
-    nan_value = -32767.0
+    nan_value = -1.0
 
     # Could benefit from a parameter Nan in target to make sure that nodata value is not hardcoded.
     def __init__(self, data_dir: str = "path/to/dir", patch_size: int = 256, batch_size: int = 128, length: int = 10000, num_workers: int = 0, seed: int = 42, predict_patch_size: int = 12000):
@@ -176,20 +195,20 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
                 K.RandomHorizontalFlip(p=0.5, keepdim = True),
                 K.RandomVerticalFlip(p=0.5, keepdim = True),
                 #  Don't know if these augmentations make actual sense in a pixelwise regression context...
-                K.RandomAffine(degrees=(0, 360), scale=(0.3,0.9), p=0.25, keepdim = True),
-                K.RandomGaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0), p=0.25, keepdim = True),
+                #K.RandomAffine(degrees=(0, 360), scale=(0.3,0.9), p=0.25, keepdim = True),
+                #K.RandomGaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0), p=0.25, keepdim = True),
                 data_keys=None,
                 keepdim = True,
                 same_on_batch = False, 
-                random_apply=3
+                random_apply=2
             ),
             'image' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
-            'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),data_keys=None, keepdim=True)
+            'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),PNOAVnDSMInputNoHeightInArtificialSurfaces(),data_keys=None, keepdim=True)
         }
 
         self.aug = {
             'image' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
-            'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),data_keys=None, keepdim=True)
+            'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),PNOAVnDSMInputNoHeightInArtificialSurfaces(),data_keys=None, keepdim=True)
         }
 
     def on_after_batch_transfer(
@@ -245,7 +264,7 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
 
         pnoa_dataset = PNOAnDSMV(self.data_dir)
 
-        self.nan_value = pnoa_dataset.nan_value
+        self.nan_value = -1.0
 
         if stage in ['predict']:
             # Build the prediction dataset gathering copernicus data for portugal and spain 2020-2021
