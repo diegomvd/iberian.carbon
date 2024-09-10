@@ -8,24 +8,21 @@ from rasterio.warp import transform_bounds
 from rasterio.crs import CRS
 import numpy  as np
 
-sentinel_path = '/Users/diegobengochea/WorldCoverComposites/WORLDCOVER/'
+sentinel_path = '/Users/diegobengochea/git/iberian.carbon/data/LightningDataModule_Data/'
 
 pnoa_path = '/Users/diegobengochea/git/iberian.carbon/Entornos_Vuelo_LiDAR/2_Cobertura/'
-pnoa_dataddir =  '/Users/diegobengochea/PNOA2_LIDAR_VEGETATION/'
+pnoa_datadir =  '/Users/diegobengochea/PNOA2/PNOA2_LIDAR_VEGETATION/'
 
+fileids = set()
 for year in [2020,2021]:
-    for sentinel_tile in Path(sentinel_path).rglob('*{}*SWIR.tif'.format(year)):
-        print(sentinel_tile)
-        
+   for sentinel_tile in Path(sentinel_path).rglob('*{}*SWIR.tif'.format(year)):
         with rasterio.open(sentinel_tile)  as src_sentinel:
             
             bounds_sentinel = src_sentinel.bounds
             polygon_sentinel = geometry.box(minx=bounds_sentinel.left, maxx=bounds_sentinel.right, miny=bounds_sentinel.bottom, maxy=bounds_sentinel.top)
 
             tile_list = []
-            fileids = set()
-            print('here')
-
+            
             for pnoa_polygons in Path(pnoa_path).rglob('*.shp'):
                 # Each shapefile contains all rectangular polygons of the area sampled by the plane.
 
@@ -38,13 +35,19 @@ for year in [2020,2021]:
                 #  Filter by year
                 pnoa_intersecting = pnoa_intersecting[ pnoa_intersecting.FECHA == str(year)]
                 # Add file names of the PNOA files to intersect.
-                merging_files = pnoa_intersecting['PATH'].apply(lambda x: '{}{}'.format(pnoa_dataddir,x.split('/')[-1]) ).to_list()
+                selected_files = pnoa_intersecting['PATH'].apply(lambda x: '{}{}'.format(pnoa_datadir,x.split('/')[-1]) ).to_list()
 
 
-                merging_dict = {re.findall('NDSM-VEGETACION-(?:...)-(.*)-COB2.tif',f)[0] : f for f in merging_files}
-                merging_dict = { fid : merging_dict[fid] for fid in merging_dict if not fid in fileids }
-                fileids.update(merging_dict.keys())
+                #selected_dict = {re.findall('NDSM-VEGETACION-(?:...)-(.*)-COB2.tif',f)[0] : f for f in selected_files}
+                #selected_dict = { fid : selected_dict[fid] for fid in selected_dict if not fid in fileids }
+                # remove redundant files
+                fileids.update(selected_files)
 
+                # Create dict with new name that includes year of sampling!!!!!!! Then resave rasters by renaming. 
+
+                print(fileids)
+
+                """
                 if len(merging_dict)>0:
                     esa_id = re.findall('v.00_(.*)_SWIR.tif',str(sentinel_tile))[0]
                     merge_name = '/Users/diegobengochea/PNOA2_merged/PNOA_{}_H{}_{}_NDSM.tif'.format(year,utm,esa_id)
@@ -63,7 +66,7 @@ for year in [2020,2021]:
                         compress='lzw'
                     ) as new_dataset:
                         new_dataset.write(image[0,:,:], 1) 
-                
+                """                
 
 
 
