@@ -55,7 +55,7 @@ for year in [2020,2021]:
                     selected_dict = {re.findall('NDSM-VEGETACION-(?:...)-(.*)-COB2.tif',f)[0] : f for f in selected_files}
                     selected_dict = { fid : selected_dict[fid] for fid in selected_dict if not fid in fileids }
                     
-                    fileids.update(selected_dict.keys)
+                    fileids.update(selected_dict.keys())
 
                     for f in selected_dict.values():
                         selected_new_fnames.append( (f, '{}PNOA_{}_{}'.format(target_pnoa_datadir, year, re.findall('.*/(NDSM-.*)',f)[0]))  )
