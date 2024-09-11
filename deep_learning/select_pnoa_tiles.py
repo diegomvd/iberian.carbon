@@ -39,11 +39,12 @@ for year in [2020,2021]:
                 # Add file names of the PNOA files to intersect.
                 selected_files = pnoa_intersecting['PATH'].apply(lambda x: '{}{}'.format(pnoa_datadir,x.split('/')[-1]) ).to_list()
 
+                selected_files_and_year = [ (f,year) for f in selected_files]
 
                 #selected_dict = {re.findall('NDSM-VEGETACION-(?:...)-(.*)-COB2.tif',f)[0] : f for f in selected_files}
                 #selected_dict = { fid : selected_dict[fid] for fid in selected_dict if not fid in fileids }
                 # remove redundant files
-                fileids.update((selected_files, year))
+                fileids.update(selected_files_and_year)
 
                 # Create dict with new name that includes year of sampling!!!!!!! Then resave rasters by renaming. 
 
