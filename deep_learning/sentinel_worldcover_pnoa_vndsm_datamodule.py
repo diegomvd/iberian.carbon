@@ -263,6 +263,8 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
         sentinel = SentinelWorldCoverYearlyComposites(rgbnir_dataset,swir_dataset,ndvi_dataset,vvvhratio_dataset)
 
         pnoa_dataset = PNOAnDSMV(self.data_dir)
+        print(pnoa_dataset)
+        print(pnoa_dataset.bounds)
 
         self.nan_value = -1.0
 
