@@ -208,13 +208,9 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
             dataloader_idx: Index of the current dataloader.
         """
         x = batch["image"]
-        print(x)
         # TODO: remove .to(...) once we have a real pixelwise regression dataset
         y = batch[self.target_key].to(torch.float)
-        print(self.target_key)
-        print(y)
         y_hat = self(x)
-        print(y_hat)
         if y_hat.ndim != y.ndim:
             y = y.unsqueeze(dim=1)
         loss = self.criterion(y_hat, y)
