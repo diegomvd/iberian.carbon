@@ -51,7 +51,6 @@ for year in [2020,2021]:
 
                 # Create dict with new name that includes year of sampling!!!!!!! Then resave rasters by renaming. 
 selected_new_fnames = [ (x[0], '{}PNOA_{}_{}'.format(target_pnoa_datadir, x[1], re.findall('.*/(NDSM-.*)',x[0])[0])) for x in fileids ]
-print(selected_new_fnames)
 
 for ref, target in selected_new_fnames:
     with rasterio.open(ref) as src: 
@@ -70,7 +69,7 @@ for ref, target in selected_new_fnames:
             transform=src.transform,
             compress='lzw'
         ) as new_dataset:
-            new_dataset.write(image[0,:,:], 1) 
+            new_dataset.write(image, 1) 
         
 
              
