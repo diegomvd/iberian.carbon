@@ -128,13 +128,8 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
         
         # TODO: remove .to(...) once we have a real pixelwise regression dataset
         y = batch[self.target_key].to(torch.float)
-        print('REAL')
-        print(y)
         y_hat = self(x)
-        print('PREDICTED')
-        print(y_hat)
         if y_hat.ndim != y.ndim:
-            print('Unsqueeze??')
             y = y.unsqueeze(dim=1)
         loss: Tensor = self.criterion(y_hat, y)
         print('LOSS')
@@ -144,8 +139,7 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
         print(loss)    
         self.log("train_loss", loss)
         self.train_metrics(y_hat, y)
-        print(self.train_metrics)
-        print(train_metrics(y_hat, y))
+        print(self.train_metrics(y_hat,y))
         self.log_dict(self.train_metrics)
 
         return loss
