@@ -144,6 +144,8 @@ class NanRobustPixelWiseRegressionTask(PixelwiseRegressionTask):
         print(loss)    
         self.log("train_loss", loss)
         self.train_metrics(y_hat, y)
+        print(self.train_metrics)
+        print(train_metrics(y_hat, y))
         self.log_dict(self.train_metrics)
 
         return loss
