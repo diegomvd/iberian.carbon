@@ -15,6 +15,9 @@ pnoa_datadir =  '/Users/diegobengochea/PNOA2/PNOA2_LIDAR_VEGETATION/'
 
 target_pnoa_datadir = '/Users/diegobengochea/git/iberian.carbon/data/training_pnoa_tiles/'
 
+if not Path(target_pnoa_datadir).exists():
+    Path(target_pnoa_datadir).mkdir()
+
 fileids = set()
 for year in [2020,2021]:
    for sentinel_tile in Path(sentinel_path).rglob('*{}*SWIR.tif'.format(year)):
@@ -47,8 +50,8 @@ for year in [2020,2021]:
                 fileids.update(selected_files_and_year)
 
                 # Create dict with new name that includes year of sampling!!!!!!! Then resave rasters by renaming. 
-
-selected_new_fnames = [ (x, '{}/PNOA_{}_{}'.format(target_pnoa_datadir, x[1], re.findall('.*/(NDSM-.*)',x[0]))) for x in fileids ]
+print(fileids)
+selected_new_fnames = [ (x, '{}PNOA_{}_{}'.format(target_pnoa_datadir, x[1], re.findall('.*/(NDSM-.*)',x[0])[0])) for x in fileids ]
 print(selected_new_fnames[0])
 
 for ref, target in selected_new_fnames:
