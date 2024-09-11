@@ -13,6 +13,8 @@ sentinel_path = '/Users/diegobengochea/git/iberian.carbon/data/LightningDataModu
 pnoa_path = '/Users/diegobengochea/git/iberian.carbon/Entornos_Vuelo_LiDAR/2_Cobertura/'
 pnoa_datadir =  '/Users/diegobengochea/PNOA2/PNOA2_LIDAR_VEGETATION/'
 
+target_pnoa_datadir = '/Users/diegobengochea/git/iberian.carbon/data/training_pnoa_tiles/'
+
 fileids = set()
 for year in [2020,2021]:
    for sentinel_tile in Path(sentinel_path).rglob('*{}*SWIR.tif'.format(year)):
@@ -41,32 +43,53 @@ for year in [2020,2021]:
                 #selected_dict = {re.findall('NDSM-VEGETACION-(?:...)-(.*)-COB2.tif',f)[0] : f for f in selected_files}
                 #selected_dict = { fid : selected_dict[fid] for fid in selected_dict if not fid in fileids }
                 # remove redundant files
-                fileids.update(selected_files)
+                fileids.update((selected_files, year))
 
                 # Create dict with new name that includes year of sampling!!!!!!! Then resave rasters by renaming. 
 
-                print(fileids)
+selected_new_fnames = [ (x, '{}/PNOA_{}_{}'.format(target_pnoa_datadir, x[1], re.findall('.*/(NDSM-.*)',x[0]))) for x in fileids ]
+print(selected_new_fnames[0])
 
-                """
-                if len(merging_dict)>0:
-                    esa_id = re.findall('v.00_(.*)_SWIR.tif',str(sentinel_tile))[0]
-                    merge_name = '/Users/diegobengochea/PNOA2_merged/PNOA_{}_H{}_{}_NDSM.tif'.format(year,utm,esa_id)
-                    image, transform = merge( list(merging_dict.values()) )
-                    with rasterio.open(
-                        merge_name,
-                        mode="w",
-                        driver="GTiff",
-                        height=image.shape[-2],
-                        width=image.shape[-1],
-                        dtype=np.float32,
-                        count=1,
-                        nodata=-32767.0,
-                        crs="EPSG:258{}".format(utm),
-                        transform=transform,
-                        compress='lzw'
-                    ) as new_dataset:
-                        new_dataset.write(image[0,:,:], 1) 
-                """                
+for ref, target in selected_new_fnames:
+    with rasterio.open(ref) as src: 
+        image = src.read(1)
+
+        with rasterio.open(
+            target,
+            mode="w",
+            driver="GTiff",
+            height=image.shape[-2],
+            width=image.shape[-1],
+            dtype=np.float32,
+            count=1,
+            nodata=float(src.nodata),
+            crs="EPSG:258{}".format(utm),
+            transform=src.transform,
+            compress='lzw'
+        ) as new_dataset:
+            new_dataset.write(image[0,:,:], 1) 
+        
+
+             
+# if len(merging_dict)>0:
+#     esa_id = re.findall('v.00_(.*)_SWIR.tif',str(sentinel_tile))[0]
+#     merge_name = '/Users/diegobengochea/PNOA2_merged/PNOA_{}_H{}_{}_NDSM.tif'.format(year,utm,esa_id)
+#     image, transform = merge( list(merging_dict.values()) )
+#     with rasterio.open(
+#         merge_name,
+#         mode="w",
+#         driver="GTiff",
+#         height=image.shape[-2],
+#         width=image.shape[-1],
+#         dtype=np.float32,
+#         count=1,
+#         nodata=-32767.0,
+#         crs="EPSG:258{}".format(utm),
+#         transform=transform,
+#         compress='lzw'
+#     ) as new_dataset:
+#         new_dataset.write(image[0,:,:], 1) 
+                        
 
 
 
