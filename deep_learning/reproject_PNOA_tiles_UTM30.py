@@ -1,8 +1,8 @@
 from geoutils import reproject_raster
 from pathlib import Path
 
-dir = '/Users/diegobengochea/git/iberian.carbon/data/Vegetation_NDSM_PNOA2/PNOA2_merged/'
-out_dir = '/Users/diegobengochea/git/iberian.carbon/data/Vegetation_NDSM_PNOA2/PNOA2_merged_UTM30/'
+dir = '/Users/diegobengochea/git/iberian.carbon/data/training_pnoa_tiles/'
+out_dir = '/Users/diegobengochea/git/iberian.carbon/data/training_pnoa_tiles_reprojected_UTM30/'
 
 if not Path(out_dir).exists():
     Path(out_dir).mkdir(parents=True)
