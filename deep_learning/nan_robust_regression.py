@@ -265,6 +265,7 @@ class NanRobustHeightThresholdPixelWiseRegressionTask(PixelwiseRegressionTask):
            *lr* and *patience*.
         """
         self.nan_value = nan_value
+        self.height_threshold = height_threshold
         super().__init__(model=model,backbone=backbone,weights=weights,in_channels=in_channels,num_outputs=num_outputs,num_filters=num_filters,loss=loss,lr=lr,patience=patience,freeze_backbone=freeze_backbone,freeze_decoder=freeze_decoder)
 
     def configure_losses(self) -> None:
@@ -332,7 +333,7 @@ class NanRobustHeightThresholdPixelWiseRegressionTask(PixelwiseRegressionTask):
         if y_hat.ndim != y.ndim:
             y = y.unsqueeze(dim=1)
         loss: Tensor = self.criterion(y_hat, y)
-        loss = self._nan_robust_thresholded_loss_reduction(loss,y,self.nan_value)    
+        loss = self._nan_robust_thresholded_loss_reduction(loss,y,self.nan_value,self.height_threshold)    
         self.log("train_loss", loss)
         self.train_metrics(y_hat, y)
         self.log_dict(self.train_metrics)
@@ -357,7 +358,7 @@ class NanRobustHeightThresholdPixelWiseRegressionTask(PixelwiseRegressionTask):
             if y_hat.ndim != y.ndim:
                 y = y.unsqueeze(dim=1)
             loss = self.criterion(y_hat, y)
-            loss = self._nan_robust_thresholded_loss_reduction(loss,y,self.nan_value)   
+            loss = self._nan_robust_thresholded_loss_reduction(loss,y,self.nan_value,self.height_threshold)   
             self.log("val_loss", loss)
             self.val_metrics(y_hat, y)
             self.log_dict(self.val_metrics)
@@ -405,7 +406,7 @@ class NanRobustHeightThresholdPixelWiseRegressionTask(PixelwiseRegressionTask):
         if y_hat.ndim != y.ndim:
             y = y.unsqueeze(dim=1)
         loss = self.criterion(y_hat, y)
-        loss = self._nan_robust_thresholded_loss_reduction(loss,y,self.nan_value)   
+        loss = self._nan_robust_thresholded_loss_reduction(loss,y,self.nan_value,self.height_threshold)   
         self.log("test_loss", loss)
         self.test_metrics(y_hat, y)
         self.log_dict(self.test_metrics)   
