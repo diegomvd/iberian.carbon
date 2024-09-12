@@ -21,7 +21,7 @@ unet_regression = NanRobustPixelWiseRegressionTask(
     num_outputs=1, 
     loss = 'mse',
     nan_value=dm.nan_value,
-    lr = 0.001,
+    lr = 0.01,
     patience =10    
 )
 
@@ -45,7 +45,7 @@ trainer = Trainer(
     max_epochs=1000,
 )
 
-resume_from_checkpoint = False
+resume_from_checkpoint = True
 stage = 'predict' # 'test'
 stage = 'test'
 stage = 'fit'
@@ -53,13 +53,13 @@ stage = 'fit'
 
 if resume_from_checkpoint:
     if stage=='test':
-        test_metrics = trainer.test(unet_regression, datamodule = dm, ckpt_path ="/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=82-step=6474.ckpt")
+        test_metrics = trainer.test(unet_regression, datamodule = dm, ckpt_path ="/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=2-step=234.ckpt")
         print(test_metrics)
     elif stage == 'predict':
-        prediction = trainer.predict(unet_regression, datamodule = dm, ckpt_path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=82-step=6474.ckpt")
+        prediction = trainer.predict(unet_regression, datamodule = dm, ckpt_path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=2-step=234.ckpt")
         print(prediction)
     else:
-        trainer.fit(unet_regression, datamodule=dm, ckpt_path="/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=82-step=6474.ckpt")
+        trainer.fit(unet_regression, datamodule=dm, ckpt_path="/Users/diegobengochea/git/iberian.carbon/deep_learning/model_0_weights/epoch=2-step=234.ckpt")
 else:
     trainer.fit(unet_regression, dm)
 
