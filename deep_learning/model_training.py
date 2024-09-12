@@ -1,6 +1,8 @@
 from sentinel_worldcover_pnoa_vndsm_datamodule import SentinelWorldCoverPNOAVnDSMDataModule
 
 from nan_robust_regression import NanRobustPixelWiseRegressionTask, NanRobustHeightThresholdPixelWiseRegressionTask
+from prediction_writer import CanopyHeightRasterWriter
+
 from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -35,11 +37,13 @@ early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0, patienc
 tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
+pred_writer = CanopyHeightRasterWriter(output_dir="predictions_canopy_height", write_interval="batch")
+
 trainer = Trainer(
     check_val_every_n_epoch=1,
     accelerator=accelerator,
     devices="auto",
-    callbacks=[checkpoint_callback, early_stopping_callback],
+    callbacks=[checkpoint_callback, early_stopping_callback, pred_writer],
     log_every_n_steps=50,
     logger=csv_logger,
     max_epochs=1000,
