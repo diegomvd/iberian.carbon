@@ -21,8 +21,8 @@ unet_regression = NanRobustPixelWiseRegressionTask(
     num_outputs=1, 
     loss = 'mse',
     nan_value=dm.nan_value,
-    lr = 0.01,
-    patience =10    
+    lr = 0.001,
+    patience = 10    
 )
 
 # Define a lightning trainer
