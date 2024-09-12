@@ -1,6 +1,6 @@
 from sentinel_worldcover_pnoa_vndsm_datamodule import SentinelWorldCoverPNOAVnDSMDataModule
 
-from nan_robust_regression import NanRobustPixelWiseRegressionTask
+from nan_robust_regression import NanRobustPixelWiseRegressionTask, NanRobustHeightThresholdPixelWiseRegressionTask
 from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -13,7 +13,7 @@ path = '/Users/diegobengochea/git/iberian.carbon/data/LightningDataModule_Data_U
 dm = SentinelWorldCoverPNOAVnDSMDataModule(data_dir=path)
 
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
-unet_regression = NanRobustPixelWiseRegressionTask(
+unet_regression = NanRobustHeightThresholdPixelWiseRegressionTask(
     model='unet',
     backbone='resnet18',
     weights=None,
@@ -31,7 +31,7 @@ checkpoint_dir = ''
 checkpoint_callback = ModelCheckpoint(
     monitor='val_loss', dirpath=checkpoint_dir, save_top_k=1, save_last=True
 )
-early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0, patience=20) # which min_delta to use?
+early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0, patience=50) # which min_delta to use?
 tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
