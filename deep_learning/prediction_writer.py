@@ -2,6 +2,7 @@ import torch
 from lightning.pytorch.callbacks import BasePredictionWriter
 import rasterio
 from rasterio.transform import from_bounds
+import os
 
 class CanopyHeightRasterWriter(BasePredictionWriter):
 
