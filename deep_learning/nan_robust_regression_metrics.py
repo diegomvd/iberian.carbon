@@ -240,12 +240,12 @@ def _nan_robust_thresholded_mean_squared_error_update(preds: Tensor, target: Ten
     preds = preds.view(-1)
     target = target.view(-1)
  
-    diff = preds - target
+    squared_error = (preds - target)*(preds-target)
 
     target_mask = (target!=nan_value) & (target>height_threshold)
-    diff = torch.masked_select(diff,target_mask) 
+    squared_error = torch.masked_select(squared_error,target_mask) 
 
-    sum_squared_error = torch.sum(diff * diff, dim=0)
+    sum_squared_error = torch.sum(squared_error, dim=0)
 
     return sum_squared_error, target.shape[0]   
 
