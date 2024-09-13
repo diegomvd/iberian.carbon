@@ -10,11 +10,12 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
     def write_on_batch_end(
         self, trainer, pl_module, prediction, batch_indices, batch, batch_idx, dataloader_idx
     ):
-        print('BATCH')
-        print(batch)
+        
         print('BATCH INDEX')
         print(batch_idx)
         print('BATCH INDICES')
+        print(batch.shape)
+        print(len(batch_indices))
         print(batch_indices[0])
         print('DATALOADER INDEX')
         print(dataloader_idx)
