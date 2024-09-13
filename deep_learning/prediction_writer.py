@@ -17,6 +17,7 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
         print(batch.keys())
         print(batch['image'].shape)
         print(len(batch_indices))
+        print(prediction.shape)
         print(batch_indices[0])
         print('DATALOADER INDEX')
         print(dataloader_idx)
