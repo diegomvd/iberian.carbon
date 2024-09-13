@@ -3,6 +3,7 @@ from lightning.pytorch.callbacks import BasePredictionWriter
 import rasterio
 from rasterio.transform import from_bounds
 import os
+from pathlib import Path
 
 class CanopyHeightRasterWriter(BasePredictionWriter):
 
@@ -24,8 +25,14 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
             else:
                 year = 2021 
 
+
+            savepath = Path(os.path.join(self.output_dir, str(dataloader_idx), f"predicted_batch_{batch_idx}_patch_{i}_{year}.tif"))
+
+            if not savepath.parents[0].exists:
+                savepath.parents[0].mkdir(parents=True)
+
             with rasterio.open(
-                os.path.join(self.output_dir, str(dataloader_idx), f"predicted_batch_{batch_idx}_patch_{i}_{year}.tif"),
+                savepath,
                 mode="w",
                 driver="GTiff",
                 height=predicted_patch[0].shape[0],
