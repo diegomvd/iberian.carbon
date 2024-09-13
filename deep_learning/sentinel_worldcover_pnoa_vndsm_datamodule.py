@@ -325,7 +325,7 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
         if isinstance(batch, dict):
             # move all tensors in your custom data structure to the device
             batch['image'] = batch['image'].to(device)
-            if self.trainer.predicting:
+            if not self.trainer.predicting:
                 batch['mask'] = batch['mask'].float().to(device)
         else:
             batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
