@@ -6,7 +6,7 @@ from pathlib import Path
 
 path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_canopy_height/0/"
 
-raster_files = [file for file in Path(path).glob('*.tif') if year in str(file)]
+# raster_files = [file for file in Path(path).glob('*.tif') if year in str(file)]
 
 for year in ['2020', '2021']:
 
