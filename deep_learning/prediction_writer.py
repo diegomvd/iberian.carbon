@@ -27,9 +27,8 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
 
 
             savepath = Path(os.path.join(self.output_dir, str(dataloader_idx), f"predicted_batch_{batch_idx}_patch_{i}_{year}.tif"))
-            print(savepath)
+
             if not savepath.parents[0].exists():
-                print('Does not exist')
                 savepath.parents[0].mkdir(parents=True)
 
             with rasterio.open(
@@ -45,7 +44,7 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
                 nodata=-1.0,
                 compress='lzw'    
             ) as new_dataset:
-                new_dataset.write(predicted_patch[0], 1)
+                new_dataset.write(predicted_patch[0].cpu(), 1)
                 new_dataset.update_tags(DATE = year)
 
         # In function of how comes the information just use the tensor image to build a raster with the corresponding raster bounds.
