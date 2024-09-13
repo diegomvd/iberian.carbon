@@ -206,6 +206,10 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
             'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),PNOAVnDSMInputNoHeightInArtificialSurfaces(),data_keys=None, keepdim=True)
         }
 
+        self.predict_aug = {
+            'image' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+        }
+
         self.aug = {
             'image' : K.AugmentationSequential(SentinelWorldCoverRescale(nodata,offset,scale), SentinelWorldCoverMinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
             'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),PNOAVnDSMInputNoHeightInArtificialSurfaces(),data_keys=None, keepdim=True)
@@ -233,19 +237,20 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
             elif self.trainer.predicting:
                 split = "predict"
 
-            # TODO: EDIT this part to make it compatible with our dataset
-            aug = self._valid_attribute(f"{split}_aug", "aug")
-
             # Remove geo  information
             del  batch['crs']
             del  batch['bbox']
+
+            # TODO: EDIT this part to make it compatible with our dataset
+            aug = self._valid_attribute(f"{split}_aug", "aug")
 
             # Assign nan to nodata values
             # Image rescaling and normalization
             batch['image'] = aug['image']({'image':batch['image']})['image']
 
-            #  Need to find a less confusing solution than calling image the mask
-            batch['mask'] = aug['mask']({'image':batch['mask']})['image']
+            if 'mask' in aug.keys():
+                #  Need to find a less confusing solution than calling image the mask
+                batch['mask'] = aug['mask']({'image':batch['mask']})['image']
             
             if 'general' in aug.keys():
                 # Image augmentation
@@ -320,7 +325,7 @@ class SentinelWorldCoverPNOAVnDSMDataModule(GeoDataModule):
         if isinstance(batch, dict):
             # move all tensors in your custom data structure to the device
             batch['image'] = batch['image'].to(device)
-            if len(batch['mask'])>0:
+            if self.trainer.predicting:
                 batch['mask'] = batch['mask'].float().to(device)
         else:
             batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
