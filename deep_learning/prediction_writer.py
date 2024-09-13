@@ -15,7 +15,7 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
         print('BATCH INDEX')
         print(batch_idx)
         print('BATCH INDICES')
-        print(batch_indices)
+        print(batch_indices[0])
         print('DATALOADER INDEX')
         print(dataloader_idx)
 
