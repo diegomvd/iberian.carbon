@@ -14,18 +14,6 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
         self, trainer, pl_module, prediction, batch_indices, batch, batch_idx, dataloader_idx
     ):
         
-        print('BATCH INDEX')
-        print(batch_idx)
-        print('BATCH INDICES')
-        print(batch.keys())
-        print(batch['image'].shape)
-        print(len(batch_indices))
-        print(prediction.shape)
-        print(batch_indices[0])
-        print(batch_indices[1])
-        print('DATALOADER INDEX')
-        print(dataloader_idx)
-
         for i,predicted_patch in enumerate(prediction):
             index = batch_indices[i]
             print(index)
@@ -37,7 +25,7 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
                 year = 2021 
 
             with rasterio.open(
-                os.path.join(self.output_dir, dataloader_idx, f"predicted_batch_{batch_idx}_patch_{i}_{year}.tif"),
+                os.path.join(self.output_dir, str(dataloader_idx), f"predicted_batch_{batch_idx}_patch_{i}_{year}.tif"),
                 mode="w",
                 driver="GTiff",
                 height=predicted_patch[0].shape[0],
