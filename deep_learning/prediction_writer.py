@@ -30,7 +30,7 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
             print(index)
             transform = from_bounds(index.minx,index.miny,index.maxx,index.maxy,predicted_patch[0].shape[0],predicted_patch[0].shape[1])
 
-            if index['mint']<1609455600.0:
+            if index.mint<1609455600.0:
                 year = 2020
             else:
                 year = 2021 
