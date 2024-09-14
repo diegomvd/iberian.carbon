@@ -11,7 +11,7 @@ path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_canop
 for year in ['2020', '2021']:
 
 
-    raster_files = [file for file in Path(path).glob(f'*{year}.tif') ] 
+    raster_files = [file for file in Path(path).glob(f'*{year}.tif') if 'batch_0' in str(file) ] 
 
     with rasterio.open(raster_files[0]) as src:
         print(src.bounds)
@@ -32,8 +32,8 @@ for year in ['2020', '2021']:
             savepath,
             mode="w",
             driver="GTiff",
-            height=image.shape[0],
-            width=image.shape[1],
+            height=image.shape[-2],
+            width=image.shape[-1],
             count=1,
             dtype= 'float32',
             crs="epsg:25830",
@@ -41,6 +41,6 @@ for year in ['2020', '2021']:
             nodata=-1.0,
             compress='lzw'    
         ) as new_dataset:
-            new_dataset.write(image, 1)
+            new_dataset.write(image[0,0,:,:], 1)
             new_dataset.update_tags(DATE = year)
 
