@@ -11,7 +11,9 @@ path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_canop
 for year in ['2020', '2021']:
 
 
-    raster_files = [file for file in Path(path).glob(f'*{year}.tif') if 'batch_0' in str(file) ] 
+    raster_files = [file for file in Path(path).glob(f'*_batch_0_*{year}.tif') ] 
+
+    print(raster_files)
 
     with rasterio.open(raster_files[0]) as src:
         print(src.bounds)
