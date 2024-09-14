@@ -11,23 +11,13 @@ path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_canop
 for year in ['2020', '2021']:
 
 
-    raster_files = [file for file in Path(path).glob(f'*_batch_0_*{year}.tif') ] 
-
-    print(raster_files)
-
-    with rasterio.open(raster_files[0]) as src:
-        print(src.bounds)
-        print(src.height)
+    raster_files = [file for file in Path(path).glob(f'*{year}.tif') ] 
 
     image_sum, transform_sum = merge(raster_files, method = 'sum')
-
-    print(image_sum.shape)
 
     image_count, transform_count = merge(raster_files, method = 'count')
 
     image = image_sum/image_count
-
-    print(image.shape)
 
     savepath = "/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_canopy_height/merged/canopy_height_{}.tif".format(year)
     with rasterio.open(
@@ -43,6 +33,6 @@ for year in ['2020', '2021']:
             nodata=-1.0,
             compress='lzw'    
         ) as new_dataset:
-            new_dataset.write(image[0,0,:,:], 1)
+            new_dataset.write(image[0,:,:], 1)
             new_dataset.update_tags(DATE = year)
 
