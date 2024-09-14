@@ -13,11 +13,19 @@ for year in ['2020', '2021']:
 
     raster_files = [file for file in Path(path).glob(f'*{year}.tif') ] 
 
+    with rasterio.open(raster_files[0]) as src:
+        print(src.bounds)
+        print(src.height)
+
     image_sum, transform_sum = merge(raster_files, method = 'sum')
+
+    print(image_sum.shape)
 
     image_count, transform_count = merge(raster_files, method = 'count')
 
     image = image_sum/image_count
+
+    print(image.shape)
 
     savepath = "/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_canopy_height/merged/canopy_height_{}.tif".format(year)
     with rasterio.open(
