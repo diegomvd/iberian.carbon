@@ -3,69 +3,59 @@ from odc.stac import load
 import odc.geo
 import xarray as xr
 import rioxarray as rio
+import geopandas as gpd 
+import itertools
+from multiprocessing import Pool
 
-# Using 10 main bands from Sentinel 2, discarding bands for atmospheric correction B1, B9 and B10.
-# bands_sentinel2_10m = ['red', 'green', 'blue', 'nir']
-# bands_sentinel2_20m = ['swir16','swir22','rededge1','rededge2','rededge3','nir08']
+def process_patch(args: tuple):
 
-bands = ['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08']
+    bbox = args[0]
+    year = args[1]
 
-# We are avoiding Sentinel-1 because its calibration is technically complex and more error-prone in rough terrain
-# making it likely to end-up with biased products for the Iberian peninsula. 
-# bands_sentinel1 = ['vv','vh'] 
+    green_season = f'{year}-04-01/{year}-10-01'
 
-# Filter the item_collection removing cloud percentage larger than 50%
-cloud_filter_50percent = {
-    "op": "lte",
-    "args": [{"property": "eo:cloud_cover"}, 50]
-}
-
-
-# Think about processing everything with identical resolution
-def process_patch(bbox: list, client: Client, year: str):
-
-    growing_season = year # write a growing season string going from april to october every year
-    
+    client = Client.open("https://earth-search.aws.element84.com/v1") 
     search = client.search(
-        max_items = 10, # Remove this line after testing locally
         collections = ['sentinel-2-l2a'],
-        bbox = bbox, # Think about using intersects to get all spain and then use geobox to load progressively
-        datetime = growing_season,
-        filter = cloud_filter_50percent
+        bbox = bbox, 
+        datetime = green_season,
+        query = ['eo:cloud_cover<50']
     )
-    item_collection = search.item_collection()    
-    item_collection.save_object(f'sentinel2_items_{bbox}_{year}.json') # Save a modification of bbox where you say the coordinate
 
+    item_collection = search.item_collection()
+
+    resolution = 10
     src_dataset = odc.stac.load(
         item_collection,
-        bands= bands,
-        crs="EPSG:25830", # Reproject to the CRS used for DL
-        resolution=10 # Change this after testing
+        bands = ['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08'],
+        crs = "EPSG:25830",
+        resolution = resolution
     )
+
     # Calculate the median composite
     target_dataset= src_dataset.median(dim='time',skipna=True)
-    target_dataset.rio.to_raster("test_multiband.tif")
+    target_dataset.rio.to_raster(f'test_composite_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif')
 
-# # Process 10m resolution data
-# src_dataset = odc.stac.load(
-#     item_collection,
-#     bands= bands_sentinel2_10m,
-#     crs="EPSG:25830", # Reproject to the CRS used for DL
-#     resolution=400 # Change this after testing
-# )
+if __name__ == '__main__':
 
-# # Calculate the median composite
-# target_dataset_10m = src_dataset.median(dim='time',skipna=True)
+    # Prepare region of interest
+    spain = gpd.read_file('/Users/diegobengochea/git/iberian.carbon/data/SpainPolygon/gadm41_ESP_1.shp')
+    # Filter continental Spain
+    spain = spain[ (spain.GID_1 != 'ESP.7_1') & (spain.GID_1 != 'ESP.13_1') & (spain.GID_1 != 'ESP.14_1') ] 
+    # Reproject to UTM30 EPSG:25830
+    spain = spain.dissolve()[['geometry','COUNTRY']].to_crs(epsg='25830')
+    # Add CRS information to shapely polygon
+    geometry_spain = odc.geo.geom.Geometry(spain.geometry[0],crs='EPSG:25830')
+    # Create a GeoBox for all continental Spain with a 10 meters resolution 
+    geobox_spain = odc.geo.geobox.GeoBox.from_geopolygon(geometry_spain,resolution=10) # The resolution here is irrelevant since the Spain GeoBOX is too large to make queries, adn thus cannot be used as intersect. Only used to create tiles of suitable shape 20km2
+    # Divide the full geobox in Geotiles of smaller size for processing
+    geotiles_spain = odc.geo.geobox.GeoboxTiles(geobox_spain,(2000,2000))
+    # List of bounding boxes to query the sentinel-2-l2a catalog
+    geotiles_bbox_latlon = [ geotiles_spain.__getitem__(tile).boundingbox.to_crs('EPSG:4326') for tile in geotiles_spain._all_tiles()]
+    geotiles_bbox_latlon = [(bbox.left,bbox.bottom,bbox.right,bbox.top) for bbox in geotiles_bbox_latlon]
 
-# # Process 20m resolution data
-# src_dataset = odc.stac.load(
-#     item_collection,
-#     bands= bands_sentinel2_20m,
-#     crs="EPSG:25830",
-#     resolution=400 # change this after testing
-# )
+    args = list(itertools.product(geotiles_bbox_latlon, [2018,2019]))
 
-# target_dataset_20m = src_dataset.median(dim='time',skipna=True)
-
-# target_dataset = xr.merge([target_dataset_10m,target_dataset_20m]) 
-# target_dataset.rio.to_raster("test_multiband.tif")
+    with Pool(20) as pool:
+        print('Beggining process')
+        result = pool.map(process_patch, args)

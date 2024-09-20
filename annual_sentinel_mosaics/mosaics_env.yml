@@ -10,5 +10,6 @@ dependencies:
   - jupyter
   - ipykernel
   - rioxarray
+  - geopandas
   - pip:
     - pystac-client
