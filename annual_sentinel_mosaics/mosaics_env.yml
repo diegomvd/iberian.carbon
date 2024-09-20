@@ -1,0 +1,14 @@
+name: sentinel.mosaics
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - rasterio
+  - odc-stac
+  - numpy=1.26.4
+  - pip
+  - jupyter
+  - ipykernel
+  - rioxarray
+  - pip:
+    - pystac-client
