@@ -10,6 +10,15 @@ import dask.distributed
 import dask.utils
 from odc.stac import configure_rio, stac_load
 
+from odc.algo import erase_bad, mask_cleanup
+
+CLOUD_SHADOWS = 3
+CLOUD_HIGH_PROBABILITY = 9
+
+bitmask = 0
+for field in [CLOUD_SHADOWS, CLOUD_HIGH_PROBABILITY]:
+    bitmask |= 1 << field
+
 def process_patch(args: tuple):
 
     geobox = args[0]
@@ -17,9 +26,6 @@ def process_patch(args: tuple):
 
     bbox = geobox.boundingbox.to_crs('EPSG:4326')
     bbox = (bbox.left,bbox.bottom,bbox.right,bbox.top)
-
-    print('Bounding Box:', bbox)
-    print('Year:', year)
 
     green_season = f'{year}-04-01/{year}-10-01'
 
@@ -33,19 +39,28 @@ def process_patch(args: tuple):
 
     item_collection = search.item_collection()
 
-    src_dataset_lazy = odc.stac.load(
+    src_dataset = odc.stac.load(
         item_collection,
-        bands = ['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08'],
+        bands = ['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08','scl'],
         geobox = geobox,
-        chunks = {'x':2000,'y':2000}
+        chunks = {'x':2000,'y':2000},
+        groupby = 'solar_day',
+        resampling = 'bilinear'
     )
 
-    src_dataset = src_dataset_lazy.compute()
-    print('Loaded data', '\nBounding Box:', bbox, '\nYear:', year)
+    cloud_mask = src_dataset.scl.astype("uint16") & bitmask != 0
+    cloud_mask = mask_cleanup(cloud_mask) # Use default filters
 
+    src_dataset = erase_bad(src_dataset, cloud_mask)
+    src_dataset = src_dataset.where(src_dataset == 0)
+    
     # Calculate the median composite
-    target_dataset= src_dataset.median(dim='time',skipna=True)
-    target_dataset.rio.to_raster(f'test_composite_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif')
+    target_dataset = src_dataset.median(dim='time',skipna=True).compute().fillna(0).astype('uint16')
+
+    print('Processed median', '\nBounding Box:', bbox, '\nYear:', year)
+
+    target_dataset.rio.to_raster(f'/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif')
+
 
 if __name__ == '__main__':
 
@@ -73,10 +88,6 @@ if __name__ == '__main__':
     #geotiles_bbox_latlon = [(bbox.left,bbox.bottom,bbox.right,bbox.top) for bbox in geotiles_bbox_latlon]
 
     args = list(itertools.product(geotiles_spain, [2018,2019]))
-    print(args[0])
-
-    print(len(args))
-
-    #with Pool(20) as pool:
-    #    print('Beggining process')
-    #    result = pool.map(process_patch, args)
+ 
+    with Pool(20) as pool:
+       result = pool.map(process_patch, args)
