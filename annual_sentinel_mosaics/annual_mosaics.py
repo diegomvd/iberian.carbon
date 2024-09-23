@@ -5,7 +5,7 @@ import xarray as xr
 import rioxarray as rio
 import geopandas as gpd 
 import itertools
-from multiprocessing import Pool
+# from multiprocessing import Pool
 import dask.distributed
 import dask.utils
 from odc.stac import configure_rio, stac_load
@@ -54,22 +54,22 @@ def process_patch(args: tuple):
     src_dataset = erase_bad(src_dataset, cloud_mask)
     src_dataset = src_dataset.where(src_dataset == 0)
     
-    # Calculate the median composite
-    target_dataset = src_dataset.median(dim='time',skipna=True).compute().fillna(0).astype('uint16')
+    # Calculate the median composite. Maybe put fillna(0) before computing
+    target_dataset = src_dataset['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08'].median(dim='time',skipna=True).fillna(0).astype('uint16').compute()
+    # target_dataset = src_dataset['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08'].median(dim='time',skipna=True).compute().fillna(0).astype('uint16')
 
     print('Processed median', '\nBounding Box:', bbox, '\nYear:', year)
 
     target_dataset.rio.to_raster(f'/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif')
 
-
 if __name__ == '__main__':
-
     # Start dask cluster
     client = dask.distributed.Client()
     configure_rio(cloud_defaults=True, client = client)
 
     # Prepare region of interest
-    spain = gpd.read_file('/Users/diegobengochea/git/iberian.carbon/data/SpainPolygon/gadm41_ESP_1.shp')
+    # spain = gpd.read_file('/Users/diegobengochea/git/iberian.carbon/data/SpainPolygon/gadm41_ESP_1.shp')
+    spain = gpd.read_file('/home/dibepa/git/iberian.carbon/spain/gadm41_ESP_1.shp')
     # Filter continental Spain
     spain = spain[ (spain.GID_1 != 'ESP.7_1') & (spain.GID_1 != 'ESP.13_1') & (spain.GID_1 != 'ESP.14_1') ] 
     # Reproject to UTM30 EPSG:25830
@@ -78,16 +78,11 @@ if __name__ == '__main__':
     geometry_spain = odc.geo.geom.Geometry(spain.geometry[0],crs='EPSG:25830')
     # Create a GeoBox for all continental Spain with a 10 meters resolution 
     geobox_spain = odc.geo.geobox.GeoBox.from_geopolygon(geometry_spain,resolution=10) # The resolution here is irrelevant since the Spain GeoBOX is too large to make queries, adn thus cannot be used as intersect. Only used to create tiles of suitable shape 20km2
-    
+
     # Divide the full geobox in Geotiles of smaller size for processing
     geotiles_spain = odc.geo.geobox.GeoboxTiles(geobox_spain,(10000,10000))
     geotiles_spain = [ geotiles_spain.__getitem__(tile) for tile in geotiles_spain._all_tiles() ]
 
-    # List of bounding boxes to query the sentinel-2-l2a catalog
-   # geotiles_bbox_latlon = [ geotiles_spain.__getitem__(tile).boundingbox.to_crs('EPSG:4326') for tile in geotiles_spain._all_tiles()]
-    #geotiles_bbox_latlon = [(bbox.left,bbox.bottom,bbox.right,bbox.top) for bbox in geotiles_bbox_latlon]
-
     args = list(itertools.product(geotiles_spain, [2018,2019]))
- 
-    with Pool(20) as pool:
-       result = pool.map(process_patch, args)
+
+    print(len(args)*0.5)
