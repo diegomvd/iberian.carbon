@@ -12,6 +12,7 @@ dependencies:
   - rioxarray
   - geopandas
   - dask
+  - asyncssh
   - pip:
     - pystac-client
     - odc-algo
