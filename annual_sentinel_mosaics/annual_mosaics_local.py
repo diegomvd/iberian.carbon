@@ -11,8 +11,11 @@ from odc.stac import configure_rio, stac_load
 
 from odc.algo import erase_bad, mask_cleanup
 
+import threading
+
 CLOUD_SHADOWS = 3
 CLOUD_HIGH_PROBABILITY = 9
+NO_DATA = 0
 
 bitmask_cloud = 0
 for field in [CLOUD_SHADOWS, CLOUD_HIGH_PROBABILITY]:
@@ -84,10 +87,17 @@ if __name__ == '__main__':
         
         # Calculate the median composite.
         target_dataset = src_dataset.median(dim='time',skipna=True).fillna(0).astype('uint16')
+
+        for band in target_dataset.variables:
+            target_dataset[band] = target_dataset[band].rio.write_nodata(0, inplace=False)
         
-        target_dataset = target_dataset.rio.write_nodata(0, encoded=True, inplace=False)
-        
+        target_dataset = target_dataset.compute()
+
+        resolution = abs(int(geobox.resolution.x))
         target_dataset.rio.to_raster(
-            f'/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_10m.tif',
-            compute = True,    
+            f'/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif',
+            tags = {'DATETIME':green_season},
+            **{'compress': 'lzw'},
+            tiled = True,
+            lock=threading.Lock()
         )
