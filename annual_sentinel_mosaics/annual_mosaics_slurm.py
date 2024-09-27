@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
         resolution = abs(int(geobox.resolution.x))
         target_dataset.rio.to_raster(
-            f'/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif',
+            f'/lustre/home/mncn/dbengochea/sentinel2_composites/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif',
             tags = {'DATETIME':green_season},
             **{'compress': 'lzw'},
             tiled = True,
