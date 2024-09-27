@@ -27,7 +27,10 @@ for field in [NO_DATA]:
 
 if __name__ == '__main__':
     # Start dask cluster
-    client = dask.distributed.Client()
+
+    cluster = dask.distributed.LocalCluster(n_workers = 2, threads_per_worker=12, processes=False)
+    client = dask.distributed.Client(cluster)
+
     configure_rio(cloud_defaults=True, client = client)
 
     # Prepare region of interest
@@ -42,10 +45,10 @@ if __name__ == '__main__':
     geobox_spain = odc.geo.geobox.GeoBox.from_geopolygon(geometry_spain,resolution=10) # The resolution here is irrelevant since the Spain GeoBOX is too large to make queries, adn thus cannot be used as intersect. Only used to create tiles of suitable shape 20km2
 
     # Divide the full geobox in Geotiles of smaller size for processing
-    geotiles_spain = odc.geo.geobox.GeoboxTiles(geobox_spain,(10000,10000))
+    geotiles_spain = odc.geo.geobox.GeoboxTiles(geobox_spain,(12000,12000))
     geotiles_spain = [ geotiles_spain.__getitem__(tile) for tile in geotiles_spain._all_tiles() ]
 
-    args_list = list(itertools.product(geotiles_spain, [2018,2019]))
+    args_list = list(itertools.product(geotiles_spain, [2019]))
 
     for args in args_list:
         
@@ -55,7 +58,7 @@ if __name__ == '__main__':
         bbox = geobox.boundingbox.to_crs('EPSG:4326')
         bbox = (bbox.left,bbox.bottom,bbox.right,bbox.top)
 
-        green_season = f'{year}-04-01/{year}-10-01'
+        green_season = f'{year}-05-01/{year}-09-01'
 
         catalog = Client.open("https://earth-search.aws.element84.com/v1") 
         search = catalog.search(
@@ -71,7 +74,7 @@ if __name__ == '__main__':
             item_collection,
             bands = ['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08','scl'],
             geobox = geobox,
-            chunks = {'x':5000,'y':5000},
+            chunks = {'x':6000,'y':6000},
             groupby = 'solar_day',
             resampling = 'bilinear'
         )
