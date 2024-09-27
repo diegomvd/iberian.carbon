@@ -33,7 +33,8 @@ if __name__ == '__main__':
         account = 'mncn',
         queue = 'special',
         cores = 24,
-        memory = '90GB',
+        walltime="01:00:00",
+        memory = '40GB',
         interface = 'ib0',
         local_directory = '/scratch-local/tmp/dbengochea/',
         log_directory = '/lustre/home/mncn/dbengochea/.dask/logs/'
