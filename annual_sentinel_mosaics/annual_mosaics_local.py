@@ -11,6 +11,8 @@ from odc.stac import configure_rio, stac_load
 
 from odc.algo import erase_bad, mask_cleanup
 
+import os
+
 import threading
 
 CLOUD_SHADOWS = 3
@@ -58,6 +60,13 @@ if __name__ == '__main__':
         bbox = geobox.boundingbox.to_crs('EPSG:4326')
         bbox = (bbox.left,bbox.bottom,bbox.right,bbox.top)
 
+        resolution = abs(int(geobox.resolution.x))
+        target_fname = f'/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif'
+
+        if os.path.exists(target_fname):
+            print('Path exists.')
+            continue
+
         green_season = f'{year}-05-01/{year}-09-01'
 
         catalog = Client.open("https://earth-search.aws.element84.com/v1") 
@@ -96,11 +105,13 @@ if __name__ == '__main__':
         
         target_dataset = target_dataset.compute()
 
-        resolution = abs(int(geobox.resolution.x))
         target_dataset.rio.to_raster(
-            f'/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif',
+            target_fname,
             tags = {'DATETIME':green_season},
             **{'compress': 'lzw'},
             tiled = True,
             lock=threading.Lock()
         )
+        print('Raster written. Freeing dataset.')
+        target_dataset.close()
+        print('Dataset freed.')
