@@ -46,40 +46,40 @@ if __name__ == '__main__':
 
     args_list = list(itertools.product(geotiles_spain, [2019]))
 
-    for args in args_list:
+    with dask.distributed.LocalCluster(
+        n_workers=12,
+        threads_per_worker=2,
+    ) as cluster, dask.distributed.Client(cluster) as client:
 
-        geobox = args[0]
-        year = args[1]
+        configure_rio(cloud_defaults = True, client = client)
 
-        bbox = geobox.boundingbox.to_crs('EPSG:4326')
-        bbox = (bbox.left,bbox.bottom,bbox.right,bbox.top)
+        for args in args_list:
 
-        resolution = abs(int(geobox.resolution.x))
-        target_fname = f'/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif'
+            geobox = args[0]
+            year = args[1]
 
-        if os.path.exists(target_fname):
-            print('Path exists.')
-            continue
+            bbox = geobox.boundingbox.to_crs('EPSG:4326')
+            bbox = (bbox.left,bbox.bottom,bbox.right,bbox.top)
 
-        green_season = f'{year}-05-01/{year}-09-01'
+            resolution = abs(int(geobox.resolution.x))
+            target_fname = f'/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif'
 
-        catalog = Client.open("https://earth-search.aws.element84.com/v1") 
-        search = catalog.search(
-            collections = ['sentinel-2-l2a'],
-            bbox = bbox, 
-            datetime = green_season,
-            query = ['eo:cloud_cover<50']
-        )
+            if os.path.exists(target_fname):
+                print('Path exists.')
+                continue
 
-        item_collection = search.item_collection()
+            green_season = f'{year}-05-01/{year}-09-01'
 
-        with dask.distributed.LocalCluster(
-            n_workers=12,
-            threads_per_worker=2,
-        ) as cluster, dask.distributed.Client(cluster) as client:
+            catalog = Client.open("https://earth-search.aws.element84.com/v1") 
+            search = catalog.search(
+                collections = ['sentinel-2-l2a'],
+                bbox = bbox, 
+                datetime = green_season,
+                query = ['eo:cloud_cover<50']
+            )
 
-            configure_rio(cloud_defaults = True, client = client)
-            
+            item_collection = search.item_collection()
+
             src_dataset = odc.stac.load(
                 item_collection,
                 bands = ['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08','scl'],
@@ -105,6 +105,8 @@ if __name__ == '__main__':
 
             target_dataset = target_dataset.compute()
 
+            client.restart()
+
             target_dataset.rio.to_raster(
                 target_fname,
                 tags = {'DATETIME':green_season},
@@ -115,3 +117,5 @@ if __name__ == '__main__':
             print('Raster written. Freeing dataset.')
             target_dataset.close()
             print('Dataset freed.')
+
+            client.restart()
