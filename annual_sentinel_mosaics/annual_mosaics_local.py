@@ -46,76 +46,71 @@ if __name__ == '__main__':
 
     args_list = list(itertools.product(geotiles_spain, [2019]))
 
-    with dask.distributed.LocalCluster(
-        n_workers=12,
-        threads_per_worker=2,
-    ) as cluster, dask.distributed.Client(cluster) as client:
+    cluster = dask.distributed.LocalCluster(n_workers=12,threads_per_worker=2)
+    client = dask.distributed.Client(cluster)
 
-        configure_rio(cloud_defaults = True, client = client)
+    configure_rio(cloud_defaults = True, client = client)
 
-        for args in args_list:
+    for args in args_list:
 
-            geobox = args[0]
-            year = args[1]
+        geobox = args[0]
+        year = args[1]
 
-            bbox = geobox.boundingbox.to_crs('EPSG:4326')
-            bbox = (bbox.left,bbox.bottom,bbox.right,bbox.top)
+        bbox = geobox.boundingbox.to_crs('EPSG:4326')
+        bbox = (bbox.left,bbox.bottom,bbox.right,bbox.top)
 
-            resolution = abs(int(geobox.resolution.x))
-            target_fname = f'/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif'
+        resolution = abs(int(geobox.resolution.x))
+        target_fname = f'/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/sentinel2_mosaic_{year}_lat{bbox[3]}_lon{bbox[0]}_{resolution}m.tif'
 
-            if os.path.exists(target_fname):
-                print('Path exists.')
-                continue
+        if os.path.exists(target_fname):
+            print('Path exists.')
+            continue
 
-            green_season = f'{year}-05-01/{year}-09-01'
+        green_season = f'{year}-05-01/{year}-09-01'
 
-            catalog = Client.open("https://earth-search.aws.element84.com/v1") 
-            search = catalog.search(
-                collections = ['sentinel-2-l2a'],
-                bbox = bbox, 
-                datetime = green_season,
-                query = ['eo:cloud_cover<50']
-            )
+        catalog = Client.open("https://earth-search.aws.element84.com/v1") 
+        search = catalog.search(
+            collections = ['sentinel-2-l2a'],
+            bbox = bbox, 
+            datetime = green_season,
+            query = ['eo:cloud_cover<50']
+        )
 
-            item_collection = search.item_collection()
+        item_collection = search.item_collection()
 
-            src_dataset = odc.stac.load(
-                item_collection,
-                bands = ['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08','scl'],
-                geobox = geobox,
-                chunks = {'x':4000,'y':4000},
-                groupby = 'solar_day',
-                resampling = 'bilinear'
-            )
+        src_dataset = odc.stac.load(
+            item_collection,
+            bands = ['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08','scl'],
+            geobox = geobox,
+            chunks = {'x':4000,'y':4000},
+            groupby = 'solar_day',
+            resampling = 'bilinear'
+        )
 
-            cloud_mask = src_dataset.scl.astype("uint16") & bitmask_cloud != 0
-            cloud_mask = mask_cleanup(cloud_mask) # Use default filters
+        cloud_mask = src_dataset.scl.astype("uint16") & bitmask_cloud != 0
+        cloud_mask = mask_cleanup(cloud_mask) # Use default filters
 
-            nodata_mask = src_dataset.scl.astype("uint16") & bitmask_nodata != 0
-            src_dataset = src_dataset[['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08']]
-            src_dataset = src_dataset.where(~cloud_mask)
-            src_dataset = src_dataset.where(~nodata_mask)
+        nodata_mask = src_dataset.scl.astype("uint16") & bitmask_nodata != 0
+        src_dataset = src_dataset[['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08']]
+        src_dataset = src_dataset.where(~cloud_mask)
+        src_dataset = src_dataset.where(~nodata_mask)
 
-            # Calculate the median composite.
-            target_dataset = src_dataset.median(dim='time',skipna=True).fillna(0).astype('uint16')
+        # Calculate the median composite.
+        target_dataset = src_dataset.median(dim='time',skipna=True).fillna(0).astype('uint16')
 
-            for band in target_dataset.variables:
-                target_dataset[band] = target_dataset[band].rio.write_nodata(0, inplace=False)
+        for band in target_dataset.variables:
+            target_dataset[band] = target_dataset[band].rio.write_nodata(0, inplace=False)
 
-            target_dataset = target_dataset.compute()
+        target_dataset = target_dataset.compute()
 
-            client.restart()
+        target_dataset.rio.to_raster(
+            target_fname,
+            tags = {'DATETIME':green_season},
+            **{'compress': 'lzw'},
+            tiled = True,
+            lock=dask.distributed.Lock('rio')
+        )
+        print('Raster written. Freeing dataset.')
+        target_dataset.close()
+        print('Dataset freed.')
 
-            target_dataset.rio.to_raster(
-                target_fname,
-                tags = {'DATETIME':green_season},
-                **{'compress': 'lzw'},
-                tiled = True,
-                lock=dask.distributed.Lock('rio')
-            )
-            print('Raster written. Freeing dataset.')
-            target_dataset.close()
-            print('Dataset freed.')
-
-            client.restart()
