@@ -28,12 +28,6 @@ for field in [NO_DATA]:
     bitmask_nodata |= 1 << field
 
 if __name__ == '__main__':
-    # Start dask cluster
-
-    cluster = dask.distributed.LocalCluster(n_workers = 2, threads_per_worker=12, processes=False)
-    client = dask.distributed.Client(cluster)
-
-    configure_rio(cloud_defaults=True, client = client)
 
     # Prepare region of interest
     spain = gpd.read_file('/Users/diegobengochea/git/iberian.carbon/data/SpainPolygon/gadm41_ESP_1.shp')
@@ -53,7 +47,7 @@ if __name__ == '__main__':
     args_list = list(itertools.product(geotiles_spain, [2019]))
 
     for args in args_list:
-        
+
         geobox = args[0]
         year = args[1]
 
@@ -79,39 +73,45 @@ if __name__ == '__main__':
 
         item_collection = search.item_collection()
 
-        src_dataset = odc.stac.load(
-            item_collection,
-            bands = ['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08','scl'],
-            geobox = geobox,
-            chunks = {'x':6000,'y':6000},
-            groupby = 'solar_day',
-            resampling = 'bilinear'
-        )
+        with dask.distributed.LocalCluster(
+            n_workers=12,
+            threads_per_worker=2,
+        ) as cluster, dask.distributed.Client(cluster) as client:
 
-        cloud_mask = src_dataset.scl.astype("uint16") & bitmask_cloud != 0
-        cloud_mask = mask_cleanup(cloud_mask) # Use default filters
-        
-        nodata_mask = src_dataset.scl.astype("uint16") & bitmask_nodata != 0
-        
-        src_dataset = src_dataset[['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08']]
-        src_dataset = src_dataset.where(~cloud_mask)
-        src_dataset = src_dataset.where(~nodata_mask)
-        
-        # Calculate the median composite.
-        target_dataset = src_dataset.median(dim='time',skipna=True).fillna(0).astype('uint16')
+            configure_rio(cloud_defaults = True, client = client)
+            
+            src_dataset = odc.stac.load(
+                item_collection,
+                bands = ['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08','scl'],
+                geobox = geobox,
+                chunks = {'x':4000,'y':4000},
+                groupby = 'solar_day',
+                resampling = 'bilinear'
+            )
 
-        for band in target_dataset.variables:
-            target_dataset[band] = target_dataset[band].rio.write_nodata(0, inplace=False)
-        
-        target_dataset = target_dataset.compute()
+            cloud_mask = src_dataset.scl.astype("uint16") & bitmask_cloud != 0
+            cloud_mask = mask_cleanup(cloud_mask) # Use default filters
 
-        target_dataset.rio.to_raster(
-            target_fname,
-            tags = {'DATETIME':green_season},
-            **{'compress': 'lzw'},
-            tiled = True,
-            lock=threading.Lock()
-        )
-        print('Raster written. Freeing dataset.')
-        target_dataset.close()
-        print('Dataset freed.')
+            nodata_mask = src_dataset.scl.astype("uint16") & bitmask_nodata != 0
+            src_dataset = src_dataset[['red', 'green', 'blue', 'nir', 'swir16', 'swir22', 'rededge1', 'rededge2', 'rededge3', 'nir08']]
+            src_dataset = src_dataset.where(~cloud_mask)
+            src_dataset = src_dataset.where(~nodata_mask)
+
+            # Calculate the median composite.
+            target_dataset = src_dataset.median(dim='time',skipna=True).fillna(0).astype('uint16')
+
+            for band in target_dataset.variables:
+                target_dataset[band] = target_dataset[band].rio.write_nodata(0, inplace=False)
+
+            target_dataset = target_dataset.compute()
+
+            target_dataset.rio.to_raster(
+                target_fname,
+                tags = {'DATETIME':green_season},
+                **{'compress': 'lzw'},
+                tiled = True,
+                lock=dask.distributed.Lock('rio')
+            )
+            print('Raster written. Freeing dataset.')
+            target_dataset.close()
+            print('Dataset freed.')
