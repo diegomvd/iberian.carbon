@@ -196,16 +196,16 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
                 same_on_batch = False, 
                 random_apply=2
             ),
-            'image' : K.AugmentationSequential(Sentinel2Rescale(nodata,offset,scale), Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+            'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
             'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),PNOAVnDSMInputNoHeightInArtificialSurfaces(),data_keys=None, keepdim=True)
         }
 
         self.predict_aug = {
-            'image' : K.AugmentationSequential(Sentinel2Rescale(nodata,offset,scale), Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+            'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
         }
 
         self.aug = {
-            'image' : K.AugmentationSequential(Sentinel2Rescale(nodata,offset,scale), Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+            'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
             'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),PNOAVnDSMInputNoHeightInArtificialSurfaces(),data_keys=None, keepdim=True)
         }
 

@@ -9,6 +9,9 @@ from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 
 import torch
 
+import ray.train.lightning
+from ray.train.torch import TorchTrainer
+
 path = '/Users/diegobengochea/git/iberian.carbon/data/training_data_Sentinel2_PNOA_UTM30/'
 # path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test_utm30'
 
@@ -40,8 +43,9 @@ csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 pred_writer = CanopyHeightRasterWriter(output_dir="predictions_canopy_height", write_interval="batch")
 
 trainer = Trainer(
-    check_val_every_n_epoch=1,
+    check_val_every_n_epoch=5,
     accelerator=accelerator,
+    # accelerator = 'auto',
     devices="auto",
     callbacks=[checkpoint_callback, early_stopping_callback, pred_writer],
     log_every_n_steps=50,
@@ -66,7 +70,6 @@ if resume_from_checkpoint:
         trainer.fit(unet_regression, datamodule=dm, ckpt_path="/Users/diegobengochea/git/iberian.carbon/deep_learning/model_0_weights/epoch=2-step=234.ckpt")
 else:
     trainer.fit(unet_regression, dm)
-
 
 
 
