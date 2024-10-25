@@ -43,14 +43,14 @@ csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 pred_writer = CanopyHeightRasterWriter(output_dir="predictions_canopy_height", write_interval="batch")
 
 trainer = Trainer(
-    check_val_every_n_epoch=5,
+    check_val_every_n_epoch=1,
     accelerator=accelerator,
     # accelerator = 'auto',
     devices="auto",
     callbacks=[checkpoint_callback, early_stopping_callback, pred_writer],
     log_every_n_steps=50,
     logger=csv_logger,
-    max_epochs=1000,
+    max_epochs=10000,
 )
 
 resume_from_checkpoint = False
