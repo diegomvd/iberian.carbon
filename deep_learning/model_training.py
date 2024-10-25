@@ -1,4 +1,4 @@
-from sentinel_worldcover_pnoa_vndsm_datamodule import SentinelWorldCoverPNOAVnDSMDataModule
+from sentinel2_pnoa_vndsm_datamodule import Sentinel2PNOAVnDSMDataModule
 
 from nan_robust_regression import NanRobustPixelWiseRegressionTask, NanRobustHeightThresholdPixelWiseRegressionTask
 from prediction_writer import CanopyHeightRasterWriter
@@ -9,17 +9,17 @@ from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 
 import torch
 
-path = '/Users/diegobengochea/git/iberian.carbon/data/LightningDataModule_Data_UTM30/'
+path = '/Users/diegobengochea/git/iberian.carbon/data/training_data_Sentinel2_PNOA_UTM30/'
 # path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test_utm30'
 
-dm = SentinelWorldCoverPNOAVnDSMDataModule(data_dir=path)
+dm = Sentinel2PNOAVnDSMDataModule(data_dir=path)
 
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
 unet_regression = NanRobustHeightThresholdPixelWiseRegressionTask(
     model='unet',
     backbone='resnet18',
     weights=None,
-    in_channels=12, 
+    in_channels=10, 
     num_outputs=1, 
     loss = 'mse',
     nan_value=dm.nan_value,
@@ -49,7 +49,7 @@ trainer = Trainer(
     max_epochs=1000,
 )
 
-resume_from_checkpoint = True
+resume_from_checkpoint = False
 stage = 'predict' 
 #stage = 'test'
 #stage = 'fit'

@@ -1,8 +1,8 @@
 from torchgeo.datasets import RasterDataset
 
 class PNOAnDSMV(RasterDataset):
-    """Spanish vegetation Normalized Surface Digital Model
-
+    """
+    Spanish vegetation Normalized Surface Digital Model
     """
     is_image = False 
     filename_glob = "PNOA_*"
