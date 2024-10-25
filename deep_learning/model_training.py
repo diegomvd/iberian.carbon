@@ -9,8 +9,8 @@ from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 
 import torch
 
-import ray.train.lightning
-from ray.train.torch import TorchTrainer
+# import ray.train.lightning
+# from ray.train.torch import TorchTrainer
 
 path = '/Users/diegobengochea/git/iberian.carbon/data/training_data_Sentinel2_PNOA_UTM30/'
 # path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test_utm30'
