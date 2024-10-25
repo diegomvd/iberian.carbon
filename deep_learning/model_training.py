@@ -37,7 +37,7 @@ checkpoint_callback = ModelCheckpoint(
     monitor='val_loss', dirpath=checkpoint_dir, save_top_k=1, save_last=True
 )
 early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0, patience=50) # which min_delta to use?
-tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
+# tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
 pred_writer = CanopyHeightRasterWriter(output_dir="predictions_canopy_height", write_interval="batch")
