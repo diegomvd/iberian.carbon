@@ -119,7 +119,9 @@ class PNOAVnDSMInputNoHeightInArtificialSurfaces(K.IntensityAugmentationBase2D):
         flags: Dict[str, int],
         transform: Optional[Tensor] = None,
     ) -> Tensor:
-        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = 0.0
+        #input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = 0.0
+        # Set it to nodata
+        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = -1.0
         return input         
 
 # TODO: this is not needed,make sure it can be safely removed to eliminate bloat code
@@ -164,7 +166,7 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
     nan_value = -1.0
 
     # Could benefit from a parameter Nan in target to make sure that nodata value is not hardcoded.
-    def __init__(self, data_dir: str = "path/to/dir", patch_size: int = 256, batch_size: int = 128, length: int = 10000, num_workers: int = 0, seed: int = 42, predict_patch_size: int = 12000):
+    def __init__(self, data_dir: str = "path/to/dir", patch_size: int = 256, batch_size: int = 256, length: int = 10000, num_workers: int = 0, seed: int = 42, predict_patch_size: int = 12000):
 
         #  This is used to build the actual dataset.    
         self.data_dir = data_dir

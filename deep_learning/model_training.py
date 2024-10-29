@@ -20,7 +20,7 @@ dm = Sentinel2PNOAVnDSMDataModule(data_dir=path)
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
 unet_regression = NanRobustHeightThresholdPixelWiseRegressionTask(
     model='unet',
-    backbone='resnet18',
+    backbone='resnet34',
     weights=None,
     in_channels=10, 
     num_outputs=1, 
@@ -36,7 +36,7 @@ checkpoint_dir = ''
 checkpoint_callback = ModelCheckpoint(
     monitor='val_loss', dirpath=checkpoint_dir, save_top_k=1, save_last=True
 )
-early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0, patience=50) # which min_delta to use?
+early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0, patience=100) # which min_delta to use?
 # tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 
