@@ -15,12 +15,12 @@ import torch
 path = '/Users/diegobengochea/git/iberian.carbon/data/training_data_Sentinel2_PNOA_UTM30/'
 # path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test_utm30'
 
-dm = Sentinel2PNOAVnDSMDataModule(data_dir=path)
+dm = Sentinel2PNOAVnDSMDataModule(data_dir=path,segmentation=False)
 
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
 unet_regression = NanRobustHeightThresholdPixelWiseRegressionTask(
     model='unet',
-    backbone='resnet34',
+    backbone='resnet50',
     weights=None,
     in_channels=10, 
     num_outputs=1, 
@@ -38,7 +38,7 @@ checkpoint_callback = ModelCheckpoint(
 )
 early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0, patience=100) # which min_delta to use?
 # tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
-csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
+csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs_fulldata')
 
 pred_writer = CanopyHeightRasterWriter(output_dir="predictions_canopy_height", write_interval="batch")
 

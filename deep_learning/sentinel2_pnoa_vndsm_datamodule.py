@@ -124,6 +124,27 @@ class PNOAVnDSMInputNoHeightInArtificialSurfaces(K.IntensityAugmentationBase2D):
         input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = -1.0
         return input         
 
+class PNOAVnDSMSegmentationClasses(k.IntensityAugmentationBase2D):
+    """Assign segmentation classes: artificial surfaces, shrub cover, tree cover"""
+
+    def __init__(self, nan_value: float = -32767.0, height_threshold: float = 1.2 ) -> None:
+        super().__init__(p=1)
+        self.nan_value = nan_value
+        self.flags = {"artificial" : torch.tensor(nan_value).view(-1,1,1), 'threshold' : torch.tensor(height_threshold).view(-1,1,1)}   
+
+    def apply_transform(
+        self,
+        input: Tensor,
+        params: Dict[str, Tensor],
+        flags: Dict[str, int],
+        transform: Optional[Tensor] = None,
+    ) -> Tensor:
+        input[(input - flags['threshold'].to(torch.device("mps"))) >= 0] = -32768.0 # Assign -32768 to tree cover
+        input[input>0] = 2 # Assign 1 to shrubs
+        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = 1 # Assign 1 to artificial surfaces
+        input[input<0] = 3 # Assign 3 to tree cover
+        return input        
+
 # TODO: this is not needed,make sure it can be safely removed to eliminate bloat code
 class Sentinel2Rescale(K.IntensityAugmentationBase2D):
     """Rescale raster values according to scale and offset parameters"""
@@ -166,7 +187,7 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
     nan_value = -1.0
 
     # Could benefit from a parameter Nan in target to make sure that nodata value is not hardcoded.
-    def __init__(self, data_dir: str = "path/to/dir", patch_size: int = 256, batch_size: int = 256, length: int = 10000, num_workers: int = 0, seed: int = 42, predict_patch_size: int = 12000):
+    def __init__(self, data_dir: str = "path/to/dir", patch_size: int = 256, batch_size: int = 256, length: int | None = None, num_workers: int = 0, seed: int = 42, predict_patch_size: int = 12000,  segmentation:bool=False):
 
         #  This is used to build the actual dataset.    
         self.data_dir = data_dir
@@ -186,30 +207,56 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
         mins = torch.tensor([MINS[b] for b in Sentinel2Composite.all_bands])
         maxs = torch.tensor([MAXS[b] for b in Sentinel2Composite.all_bands])
 
-        self.train_aug = {
-            'general' : K.AugmentationSequential(
-                K.RandomHorizontalFlip(p=0.5, keepdim = True),
-                K.RandomVerticalFlip(p=0.5, keepdim = True),
-                #  Don't know if these augmentations make actual sense in a pixelwise regression context...
-                #K.RandomAffine(degrees=(0, 360), scale=(0.3,0.9), p=0.25, keepdim = True),
-                #K.RandomGaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0), p=0.25, keepdim = True),
-                data_keys=None,
-                keepdim = True,
-                same_on_batch = False, 
-                random_apply=2
-            ),
-            'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
-            'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),PNOAVnDSMInputNoHeightInArtificialSurfaces(),data_keys=None, keepdim=True)
-        }
+        if not segmentation:
+            self.train_aug = {
+                'general' : K.AugmentationSequential(
+                    K.RandomHorizontalFlip(p=0.5, keepdim = True),
+                    K.RandomVerticalFlip(p=0.5, keepdim = True),
+                    #  Don't know if these augmentations make actual sense in a pixelwise regression context...
+                    #K.RandomAffine(degrees=(0, 360), scale=(0.3,0.9), p=0.25, keepdim = True),
+                    #K.RandomGaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0), p=0.25, keepdim = True),
+                    data_keys=None,
+                    keepdim = True,
+                    same_on_batch = False, 
+                    random_apply=2
+                ),
+                'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+                'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),PNOAVnDSMInputNoHeightInArtificialSurfaces(),data_keys=None, keepdim=True)
+            }
 
-        self.predict_aug = {
-            'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
-        }
+            self.predict_aug = {
+                'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+            }
 
-        self.aug = {
-            'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
-            'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),PNOAVnDSMInputNoHeightInArtificialSurfaces(),data_keys=None, keepdim=True)
-        }
+            self.aug = {
+                'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+                'mask' : K.AugmentationSequential(PNOAVnDSMRemoveAbnormalHeight(),PNOAVnDSMInputNoHeightInArtificialSurfaces(),data_keys=None, keepdim=True)
+            }
+        if segmentation:
+            self.train_aug = {
+                'general' : K.AugmentationSequential(
+                    K.RandomHorizontalFlip(p=0.5, keepdim = True),
+                    K.RandomVerticalFlip(p=0.5, keepdim = True),
+                    #  Don't know if these augmentations make actual sense in a pixelwise regression context...
+                    #K.RandomAffine(degrees=(0, 360), scale=(0.3,0.9), p=0.25, keepdim = True),
+                    #K.RandomGaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0), p=0.25, keepdim = True),
+                    data_keys=None,
+                    keepdim = True,
+                    same_on_batch = False, 
+                    random_apply=2
+                ),
+                'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+                'mask' : K.AugmentationSequential(PNOAVnDSMSegmentationClasses(),data_keys=None, keepdim=True)
+            }
+
+            self.predict_aug = {
+                'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+            }
+
+            self.aug = {
+                'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
+                'mask' : K.AugmentationSequential(PNOAVnDSMSegmentationClasses(),data_keys=None, keepdim=True)
+            }    
 
     def on_after_batch_transfer(
         self, batch: dict[str, Tensor], dataloader_idx: int
