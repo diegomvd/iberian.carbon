@@ -18,7 +18,7 @@ path = '/Users/diegobengochea/git/iberian.carbon/data/training_data_Sentinel2_PN
 dm = Sentinel2PNOAVnDSMDataModule(data_dir=path,segmentation=False)
 
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
-unet_regression = NanRobustHeightThresholdPixelWiseRegressionTask(
+unet_regression = NanRobustPixelWiseRegressionTask(
     model='unet',
     backbone='resnet50',
     weights=None,
