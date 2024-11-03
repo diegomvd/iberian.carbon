@@ -124,7 +124,7 @@ class PNOAVnDSMInputNoHeightInArtificialSurfaces(K.IntensityAugmentationBase2D):
         input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = -1.0
         return input         
 
-class PNOAVnDSMSegmentationClasses(k.IntensityAugmentationBase2D):
+class PNOAVnDSMSegmentationClasses(K.IntensityAugmentationBase2D):
     """Assign segmentation classes: artificial surfaces, shrub cover, tree cover"""
 
     def __init__(self, nan_value: float = -32767.0, height_threshold: float = 1.2 ) -> None:
@@ -183,11 +183,11 @@ class Sentinel2MinMaxNormalize(K.IntensityAugmentationBase2D):
 class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
 
     seed = 4356578
-    predict_patch_size = 1000
+    predict_patch_size = 10000
     nan_value = -1.0
 
     # Could benefit from a parameter Nan in target to make sure that nodata value is not hardcoded.
-    def __init__(self, data_dir: str = "path/to/dir", patch_size: int = 256, batch_size: int = 256, length: int | None = None, num_workers: int = 0, seed: int = 42, predict_patch_size: int = 12000,  segmentation:bool=False):
+    def __init__(self, data_dir: str = "path/to/dir", patch_size: int = 256, batch_size: int = 256, length: int | None = None, num_workers: int = 0, seed: int = 42, predict_patch_size: int = 10000,  segmentation:bool=False):
 
         #  This is used to build the actual dataset.    
         self.data_dir = data_dir
@@ -313,10 +313,10 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
         self.nan_value = -1.0
 
         if stage in ['predict']:
-            # Build the prediction dataset gathering copernicus data for portugal and spain 2020-2021
-            self.predict_dataset =  sentinel# KorniaIntersectionDataset(sentinel, pnoa_dataset)
+            # Build the prediction dataset 
+            self.predict_dataset =  sentinel
 
-            size = 1024      
+            size = self.predict_patch_size      
             stride = size - 256
             self.predict_sampler = GridGeoSampler(
                 self.predict_dataset, size, stride
