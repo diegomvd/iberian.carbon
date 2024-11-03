@@ -19,10 +19,11 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
             index = batch_indices[i]
             transform = from_bounds(index.minx,index.miny,index.maxx,index.maxy,predicted_patch[0].shape[0],predicted_patch[0].shape[1])
 
-            if index.mint<1609455600.0:
-                year = 2020
-            else:
-                year = 2021 
+            year = index.mint
+            #if index.mint<1609455600.0:
+            #    year = 2020
+            #else:
+            #    year = 2021 
 
 
             savepath = Path(os.path.join(self.output_dir, str(dataloader_idx), f"predicted_batch_{batch_idx}_patch_{i}_{year}.tif"))
