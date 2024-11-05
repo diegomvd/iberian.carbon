@@ -14,7 +14,7 @@ import torch
 # import ray.train.lightning
 # from ray.train.torch import TorchTrainer
 
-path = '/Users/diegobengochea/git/iberian.carbon/data/training_data_Sentinel2_PNOA_UTM30/'
+path = '/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Iberia_CNIG/'
 # path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test_utm30'
 
 dm = Sentinel2PNOAVnDSMDataModule(data_dir=path,segmentation=True)
@@ -24,10 +24,10 @@ unet_regression = SemanticSegmentationTask(
     model='unet',
     backbone='resnet50',
     weights=None,
-    in_channels=10, 
-    num_classes=3, 
-    loss = 'mse',
-    nan_value=dm.nan_value,
+    in_channels=4, 
+    num_classes=2, 
+    loss = 'ce',
+   # nan_value=dm.nan_value,
     lr = 0.001,
     patience = 10    
 )
@@ -40,7 +40,7 @@ checkpoint_callback = ModelCheckpoint(
 )
 early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0, patience=50) # which min_delta to use?
 # tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
-csv_logger = CSVLogger(save_dir=checkpoint_dir, name='segmentation_logs')
+csv_logger = CSVLogger(save_dir=checkpoint_dir, name='segmentation_logs_CNIG')
 
 pred_writer = CanopyHeightRasterWriter(output_dir="predictions_landcover_segmentation", write_interval="batch")
 
@@ -56,9 +56,9 @@ trainer = Trainer(
 )
 
 resume_from_checkpoint = False
-stage = 'predict' 
+#stage = 'predict' 
 #stage = 'test'
-#stage = 'fit'
+stage = 'fit'
 
 
 if resume_from_checkpoint:
@@ -66,8 +66,7 @@ if resume_from_checkpoint:
         test_metrics = trainer.test(unet_regression, datamodule = dm, ckpt_path ="/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=2-step=234.ckpt")
         print(test_metrics)
     elif stage == 'predict':
-        prediction = trainer.predict(unet_regression, datamodule = dm, ckpt_path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/model_0_weights/epoch=2-step=234.ckpt")
-        print(prediction)
+        prediction = trainer.predict(unet_regression, datamodule = dm, ckpt_path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=47-step=12096.ckpt")
     else:
         trainer.fit(unet_regression, datamodule=dm, ckpt_path="/Users/diegobengochea/git/iberian.carbon/deep_learning/model_0_weights/epoch=2-step=234.ckpt")
 else:
