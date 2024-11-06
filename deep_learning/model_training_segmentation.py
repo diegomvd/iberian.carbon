@@ -22,7 +22,7 @@ dm = Sentinel2PNOAVnDSMDataModule(data_dir=path,segmentation=True)
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
 unet_regression = SemanticSegmentationTask(
     model='unet',
-    backbone='resnet50',
+    backbone='resnet18',
     weights=None,
     in_channels=4, 
     num_classes=2, 
@@ -42,7 +42,7 @@ early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0, patienc
 # tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
 csv_logger = CSVLogger(save_dir=checkpoint_dir, name='segmentation_logs_CNIG')
 
-pred_writer = CanopyHeightRasterWriter(output_dir="predictions_landcover_segmentation", write_interval="batch")
+pred_writer = CanopyHeightRasterWriter(output_dir="predictions_landcover_segmentation_CNIG", write_interval="batch")
 
 trainer = Trainer(
     check_val_every_n_epoch=1,

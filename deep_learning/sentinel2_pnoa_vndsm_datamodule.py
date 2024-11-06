@@ -162,10 +162,10 @@ class PNOAVnDSMInputNoHeightInArtificialSurfaces(K.IntensityAugmentationBase2D):
 class PNOAVnDSMSegmentationClasses(K.IntensityAugmentationBase2D):
     """Assign segmentation classes: artificial surfaces, shrub cover, tree cover"""
 
-    def __init__(self, nan_value: float = -32767.0, height_threshold: float = 1.2 ) -> None:
+    def __init__(self, nan_value: float = -32767.0 ) -> None:
         super().__init__(p=1)
         self.nan_value = nan_value
-        self.flags = {"artificial" : torch.tensor(nan_value).view(-1,1,1), 'threshold' : torch.tensor(height_threshold).view(-1,1,1)}   
+        self.flags = {"artificial" : torch.tensor(nan_value).view(-1,1,1)}   
 
     def apply_transform(
         self,
@@ -174,10 +174,8 @@ class PNOAVnDSMSegmentationClasses(K.IntensityAugmentationBase2D):
         flags: Dict[str, int],
         transform: Optional[Tensor] = None,
     ) -> Tensor:
-        input[(input - flags['threshold'].to(torch.device("mps"))) >= 0] = -32768.0 # Assign -32768 to tree cover
-        input[input>0] = 2 # Assign 1 to shrubs
-        input[(input - flags['nodata'].to(torch.device("mps"))) == 0] = 1 # Assign 1 to artificial surfaces
-        input[input<0] = 3 # Assign 3 to tree cover
+        input[input >= 0] = 1 
+        input[(input - flags['artificial'].to(torch.device('mps')))==0] = 0 
         return input        
 
 # TODO: this is not needed,make sure it can be safely removed to eliminate bloat code
@@ -224,6 +222,8 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
     # Could benefit from a parameter Nan in target to make sure that nodata value is not hardcoded.
     def __init__(self, data_dir: str = "path/to/dir", patch_size: int = 256, batch_size: int = 256, length: int | None = None, num_workers: int = 0, seed: int = 42, predict_patch_size: int = 512,  segmentation:bool=False):
 
+        self.segmentation = segmentation
+        
         #  This is used to build the actual dataset.    
         self.data_dir = data_dir
 
@@ -334,6 +334,9 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
                 # Image augmentation
                 batch = aug['general'](batch)
 
+            if self.segmentation:
+                batch['mask'] = torch.argmax(batch['mask'],dim=1)
+                
         return batch
 
     def setup(self, stage: str):
@@ -400,6 +403,7 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
         return _utils.collate.collate(batch, collate_fn_map=collate_map)
 
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
+        
         if isinstance(batch, dict):
             # move all tensors in your custom data structure to the device
             batch['image'] = batch['image'].to(device)
