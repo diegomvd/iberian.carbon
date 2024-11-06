@@ -68,7 +68,7 @@ def add_feature_from_polygon_layer(data, feature_name, feature_data, col_name):
         col_name = feature_name
 
     # Project the dataset's geometry to 4326.
-    data["geometry"] = data.geometry.to_crs("EPSG:4326")
+    # data["geometry"] = data.geometry.to_crs("EPSG:4326")
     
     # Load the polygon layer containing the data on the new feature.
     polygons = gpd.read_file(feature_data)

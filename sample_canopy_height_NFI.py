@@ -22,9 +22,9 @@ for fname in ifn_biomass_fnames:
         circle = [row.geometry.buffer(25)]
 
         mission = row.mission
-        if mission==1:
+        if mission=='1':
             pnoa_dir = '/Users/diegobengochea/Dropbox (Maestral)/Diego Bengochea/PNOA1_LIDAR_vegetation/'.format(mission)
-        if mission==2:
+        if mission=='2':
             pnoa_dir = '/Users/diegobengochea/AraujoLab Dropbox/Diego Bengochea/PNOA2_LIDAR_vegetation/'.format(mission)    
         pnoa_path = '{}{}'.format(pnoa_dir,row.pnoa_file)
         with rasterio.open(pnoa_path) as pnoa_src:
@@ -48,7 +48,7 @@ for fname in ifn_biomass_fnames:
     columns.append('AGB')
     columns.append('Type')
     columns.append('Biome')
-    columns.append('Plot Type')
+    columns.append('Plot type')
     columns.append('Estadillo')
     columns.append('Provincia')
 
@@ -56,4 +56,4 @@ for fname in ifn_biomass_fnames:
     height_biomass_df = pd.concat([height_biomass_df,tmp],axis='rows')
 
 height_biomass_df.to_csv('H_AGB_NFI4_PNOA_Biome_Ecoregion_PlotType.csv',index=False)
-height_biomass_df
+

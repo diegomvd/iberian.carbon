@@ -2,7 +2,7 @@ from lightning import LightningDataModule
 from pnoa_vegetation_nDSM import PNOAnDSMV
 from kornia_intersection_dataset import KorniaIntersectionDataset
 import kornia.augmentation as K
-from sentinel2_composites import Sentinel2Composite
+from sentinel2_composites import Sentinel2Composite, Sentinel2RGB, Sentinel2IRC, Sentinel2
 import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
@@ -16,70 +16,105 @@ from typing import Callable, Dict, Optional, Tuple, Type, Union
 from torchgeo.datamodules import GeoDataModule
 
 
+# NODATA = {
+#     'red': 0,
+#     'green': 0,
+#     'blue': 0,
+#     'nir': 0,
+#     'swir16': 0,
+#     'swir22': 0,
+#     'rededge1': 0,
+#     'rededge2': 0,
+#     'rededge3': 0,
+#     'nir08': 0
+# }
+
+# OFFSET = {
+#     'red': 0,
+#     'green': 0,
+#     'blue': 0,
+#     'nir': 0,
+#     'swir16': 0,
+#     'swir22': 0,
+#     'rededge1': 0,
+#     'rededge2': 0,
+#     'rededge3': 0,
+#     'nir08': 0
+# }
+
+# SCALE = {
+#     'red': 1,
+#     'green': 1,
+#     'blue': 1,
+#     'nir': 1,
+#     'swir16': 1,
+#     'swir22': 1,
+#     'rededge1': 1,
+#     'rededge2': 1,
+#     'rededge3': 1,
+#     'nir08': 1
+# }
+
+# MINS = {
+#     'red': 1,
+#     'green': 1,
+#     'blue': 1,
+#     'nir': 1,
+#     'swir16': 1,
+#     'swir22': 1,
+#     'rededge1': 1,
+#     'rededge2': 1,
+#     'rededge3': 1,
+#     'nir08': 1
+# }
+
+# # TODO: verify ranges in all of our data and take overall maximums per band
+# MAXS = {
+#     'red': 10000,
+#     'green': 10000,
+#     'blue': 10000,
+#     'nir': 10000,
+#     'swir16': 10000,
+#     'swir22': 10000,
+#     'rededge1': 10000,
+#     'rededge2': 10000,
+#     'rededge3': 10000,
+#     'nir08': 10000
+# }
+
 NODATA = {
-    'red': 0,
-    'green': 0,
-    'blue': 0,
-    'nir': 0,
-    'swir16': 0,
-    'swir22': 0,
-    'rededge1': 0,
-    'rededge2': 0,
-    'rededge3': 0,
-    'nir08': 0
+    'Red': -1,
+    'Green': -1,
+    'Blue': -1,
+    'Nir': -1,
 }
 
 OFFSET = {
-    'red': 0,
-    'green': 0,
-    'blue': 0,
-    'nir': 0,
-    'swir16': 0,
-    'swir22': 0,
-    'rededge1': 0,
-    'rededge2': 0,
-    'rededge3': 0,
-    'nir08': 0
+    'Red': 0,
+    'Green': 0,
+    'Blue': 0,
+    'Nir': 0,
 }
 
 SCALE = {
-    'red': 1,
-    'green': 1,
-    'blue': 1,
-    'nir': 1,
-    'swir16': 1,
-    'swir22': 1,
-    'rededge1': 1,
-    'rededge2': 1,
-    'rededge3': 1,
-    'nir08': 1
+    'Red': 1,
+    'Green': 1,
+    'Blue': 1,
+    'Nir': 1,
 }
 
 MINS = {
-    'red': 1,
-    'green': 1,
-    'blue': 1,
-    'nir': 1,
-    'swir16': 1,
-    'swir22': 1,
-    'rededge1': 1,
-    'rededge2': 1,
-    'rededge3': 1,
-    'nir08': 1
+    'Red': 0,
+    'Green': 0,
+    'Blue': 0,
+    'Nir': 0,
 }
 
-# TODO: verify ranges in all of our data and take overall maximums per band
 MAXS = {
-    'red': 10000,
-    'green': 10000,
-    'blue': 10000,
-    'nir': 10000,
-    'swir16': 10000,
-    'swir22': 10000,
-    'rededge1': 10000,
-    'rededge2': 10000,
-    'rededge3': 10000,
-    'nir08': 10000
+    'Red': 255,
+    'Green': 255,
+    'Blue': 255,
+    'Nir': 255,
 }
 
 class PNOAVnDSMRemoveAbnormalHeight(K.IntensityAugmentationBase2D):
@@ -183,11 +218,11 @@ class Sentinel2MinMaxNormalize(K.IntensityAugmentationBase2D):
 class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
 
     seed = 4356578
-    predict_patch_size = 10000
+    predict_patch_size = 512
     nan_value = -1.0
 
     # Could benefit from a parameter Nan in target to make sure that nodata value is not hardcoded.
-    def __init__(self, data_dir: str = "path/to/dir", patch_size: int = 256, batch_size: int = 256, length: int | None = None, num_workers: int = 0, seed: int = 42, predict_patch_size: int = 10000,  segmentation:bool=False):
+    def __init__(self, data_dir: str = "path/to/dir", patch_size: int = 256, batch_size: int = 256, length: int | None = None, num_workers: int = 0, seed: int = 42, predict_patch_size: int = 512,  segmentation:bool=False):
 
         #  This is used to build the actual dataset.    
         self.data_dir = data_dir
@@ -201,11 +236,11 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
         self.predict_patch_size = predict_patch_size
         self.collate_fn = self.collate_geo
 
-        nodata = torch.tensor([NODATA[b] for b in Sentinel2Composite.all_bands])
-        offset = torch.tensor([OFFSET[b] for b in Sentinel2Composite.all_bands])
-        scale = torch.tensor([SCALE[b] for b in Sentinel2Composite.all_bands])
-        mins = torch.tensor([MINS[b] for b in Sentinel2Composite.all_bands])
-        maxs = torch.tensor([MAXS[b] for b in Sentinel2Composite.all_bands])
+        nodata = torch.tensor([NODATA[b] for b in Sentinel2.all_bands])
+        offset = torch.tensor([OFFSET[b] for b in Sentinel2.all_bands])
+        scale = torch.tensor([SCALE[b] for b in Sentinel2.all_bands])
+        mins = torch.tensor([MINS[b] for b in Sentinel2.all_bands])
+        maxs = torch.tensor([MAXS[b] for b in Sentinel2.all_bands])
 
         if not segmentation:
             self.train_aug = {
@@ -303,7 +338,10 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
 
     def setup(self, stage: str):
 
-        sentinel = Sentinel2Composite(self.data_dir)
+        sentinel2_rgb = Sentinel2RGB(self.data_dir)
+        sentinel2_irc = Sentinel2IRC(self.data_dir)
+        sentinel = Sentinel2(sentinel2_rgb, sentinel2_irc)
+        
         pnoa_dataset = PNOAnDSMV(self.data_dir)
 
         print('Sentinel:\n', sentinel)
