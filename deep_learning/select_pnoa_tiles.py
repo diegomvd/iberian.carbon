@@ -8,40 +8,40 @@ from rasterio.warp import transform_bounds
 from rasterio.crs import CRS
 import numpy  as np
 
-sentinel_path = '/Users/diegobengochea/git/iberian.carbon/data/LightningDataModule_Data/'
+sentinel_path = '/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Spain/'
 
 pnoa_path = '/Users/diegobengochea/git/iberian.carbon/Entornos_Vuelo_LiDAR/2_Cobertura/'
 
 pnoa_paths = ['/Users/diegobengochea/git/iberian.carbon/Entornos_Vuelo_LiDAR/2_Cobertura/Huso_30/','/Users/diegobengochea/git/iberian.carbon/Entornos_Vuelo_LiDAR/2_Cobertura/Huso_29/','/Users/diegobengochea/git/iberian.carbon/Entornos_Vuelo_LiDAR/2_Cobertura/Huso_31/']
 
+pnoa_datadir =  '/Users/diegobengochea/git/iberian.carbon/data/Vegetation_NDSM_PNOA2/PNOA2_LIDAR_VEGETATION/'
 
-pnoa_datadir =  '/Users/diegobengochea/PNOA2/PNOA2_LIDAR_VEGETATION/'
-
-target_pnoa_datadir = '/Users/diegobengochea/git/iberian.carbon/data/training_pnoa_tiles/'
+target_pnoa_datadir = '/Users/diegobengochea/git/iberian.carbon/data/training_data_Sentinel2_PNOA/'
 
 if not Path(target_pnoa_datadir).exists():
     Path(target_pnoa_datadir).mkdir()
 
 selected_new_fnames = []
 
-for year in [2020,2021]:
-   for sentinel_tile in Path(sentinel_path).rglob('*{}*SWIR.tif'.format(year)):
+for year in [2017,2018,2019,2020,2021]:
+    for sentinel_tile in Path(sentinel_path).rglob('sentinel2_mosaic_{}_*.tif'.format(year)):
         fileids = set()
         with rasterio.open(sentinel_tile)  as src_sentinel:
+
+            crs = src_sentinel.crs
             
             bounds_sentinel = src_sentinel.bounds
             polygon_sentinel = geometry.box(minx=bounds_sentinel.left, maxx=bounds_sentinel.right, miny=bounds_sentinel.bottom, maxy=bounds_sentinel.top)
-
+            
             tile_list = []
             
             for pnoa_path in pnoa_paths:
                 for pnoa_polygons in Path(pnoa_path).glob('*.shp'):
                     # Each shapefile contains all rectangular polygons of the area sampled by the plane, each pnoa path corresponds to a different UTM.
-
                     utm = re.findall('_HU(..)_',str(pnoa_polygons))[0]
 
-
                     pnoa_gdf = gpd.read_file(pnoa_polygons)
+                    pnoa_gdf['geometry'] = pnoa_gdf['geometry'].to_crs(crs)
                     intersecting_tiles = pnoa_gdf.intersects(polygon_sentinel)
 
                     # Select only the polygons that intersect the sentinel tile

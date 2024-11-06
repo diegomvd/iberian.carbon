@@ -12,7 +12,7 @@ import torch
 # import ray.train.lightning
 # from ray.train.torch import TorchTrainer
 
-path = '/Users/diegobengochea/git/iberian.carbon/data/training_data_Sentinel2_PNOA_UTM30/'
+path = '/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Iberia_CNIG/'
 # path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test_utm30'
 
 dm = Sentinel2PNOAVnDSMDataModule(data_dir=path,segmentation=False)
@@ -20,9 +20,9 @@ dm = Sentinel2PNOAVnDSMDataModule(data_dir=path,segmentation=False)
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
 unet_regression = NanRobustPixelWiseRegressionTask(
     model='unet',
-    backbone='resnet50',
+    backbone='resnet18',
     weights=None,
-    in_channels=10, 
+    in_channels=4, 
     num_outputs=1, 
     loss = 'mse',
     nan_value=dm.nan_value,
@@ -38,9 +38,9 @@ checkpoint_callback = ModelCheckpoint(
 )
 early_stopping_callback = EarlyStopping(monitor='val_loss', min_delta=0, patience=100) # which min_delta to use?
 # tb_logger = TensorBoardLogger(save_dir=checkpoint_dir, name='canopyheight_logs')
-csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs_fulldata')
+csv_logger = CSVLogger(save_dir=checkpoint_dir, name='canopyheight_logs_fulldata_CNIG')
 
-pred_writer = CanopyHeightRasterWriter(output_dir="predictions_canopy_height", write_interval="batch")
+pred_writer = CanopyHeightRasterWriter(output_dir="predictions_canopy_height_full_data_CNIG", write_interval="batch")
 
 trainer = Trainer(
     check_val_every_n_epoch=1,
@@ -54,9 +54,9 @@ trainer = Trainer(
 )
 
 resume_from_checkpoint = False
-stage = 'predict' 
+# stage = 'predict' 
 #stage = 'test'
-#stage = 'fit'
+stage = 'fit'
 
 
 if resume_from_checkpoint:
@@ -64,8 +64,8 @@ if resume_from_checkpoint:
         test_metrics = trainer.test(unet_regression, datamodule = dm, ckpt_path ="/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=2-step=234.ckpt")
         print(test_metrics)
     elif stage == 'predict':
-        prediction = trainer.predict(unet_regression, datamodule = dm, ckpt_path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/model_0_weights/epoch=2-step=234.ckpt")
-        print(prediction)
+        prediction = trainer.predict(unet_regression, datamodule = dm, ckpt_path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=20-step=5292.ckpt")
+        #print(prediction)
     else:
         trainer.fit(unet_regression, datamodule=dm, ckpt_path="/Users/diegobengochea/git/iberian.carbon/deep_learning/model_0_weights/epoch=2-step=234.ckpt")
 else:

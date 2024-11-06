@@ -4,6 +4,8 @@ import rasterio
 from rasterio.transform import from_bounds
 import os
 from pathlib import Path
+from shapely import geometry, intersects
+import geopandas as gpd
 
 class CanopyHeightRasterWriter(BasePredictionWriter):
 
@@ -17,35 +19,36 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
         
         for i,predicted_patch in enumerate(prediction):
             index = batch_indices[i]
-            transform = from_bounds(index.minx,index.miny,index.maxx,index.maxy,predicted_patch[0].shape[0],predicted_patch[0].shape[1])
 
-            year = index.mint
-            #if index.mint<1609455600.0:
-            #    year = 2020
-            #else:
-            #    year = 2021 
+            # Check if tile intersects with Spain
+            tile = geometry.box(minx=index.minx, maxx=index.maxx, miny=index.miny, maxy=index.maxy)
+            spain = gpd.read_file('data/SpainPolygon/gadm41_ESP_0.shp')
+            spain['geometry'] = spain['geometry'].to_crs('epsg:25830')
 
+            if intersects(spain['geometry'],tile):
 
-            savepath = Path(os.path.join(self.output_dir, str(dataloader_idx), f"predicted_batch_{batch_idx}_patch_{i}_{year}.tif"))
+                transform = from_bounds(index.minx,index.miny,index.maxx,index.maxy,predicted_patch[0].shape[0],predicted_patch[0].shape[1])
 
-            if not savepath.parents[0].exists():
-                savepath.parents[0].mkdir(parents=True)
+                savepath = Path(os.path.join(self.output_dir, str(dataloader_idx), f"predicted_minx_{index.minx}_maxy_{index.maxy}_mint_{index.mint}.tif"))
 
-            with rasterio.open(
-                savepath,
-                mode="w",
-                driver="GTiff",
-                height=predicted_patch[0].shape[0],
-                width=predicted_patch[0].shape[1],
-                count=1,
-                dtype= 'float32',
-                crs="epsg:25830",
-                transform=transform,
-                nodata=-1.0,
-                compress='lzw'    
-            ) as new_dataset:
-                new_dataset.write(predicted_patch[0].cpu(), 1)
-                new_dataset.update_tags(DATE = year)
+                if not savepath.parents[0].exists():
+                    savepath.parents[0].mkdir(parents=True)
+
+                with rasterio.open(
+                    savepath,
+                    mode="w",
+                    driver="GTiff",
+                    height=predicted_patch[0].shape[0],
+                    width=predicted_patch[0].shape[1],
+                    count=1,
+                    dtype= 'float32',
+                    crs="epsg:25830",
+                    transform=transform,
+                    nodata=-1.0,
+                    compress='lzw'    
+                ) as new_dataset:
+                    new_dataset.write(predicted_patch[0].cpu(), 1)
+                    new_dataset.update_tags(DATE = year)
 
         # In function of how comes the information just use the tensor image to build a raster with the corresponding raster bounds.
 
