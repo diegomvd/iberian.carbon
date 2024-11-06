@@ -15,7 +15,7 @@ import torch
 path = '/Users/diegobengochea/git/iberian.carbon/data/Sentinel2_Composites_Iberia_CNIG/'
 # path = '/Users/diegobengochea/git/iberian.carbon/data/dl_test_utm30'
 
-dm = Sentinel2PNOAVnDSMDataModule(data_dir=path,segmentation=False)
+dm = Sentinel2PNOAVnDSMDataModule(data_dir=path,predict_patch_size=10240,segmentation=False)
 
 # All tasks in TorchGeo use AdamW optimizer and LR decay on plateau by default.  
 unet_regression = NanRobustPixelWiseRegressionTask(
@@ -53,10 +53,10 @@ trainer = Trainer(
     max_epochs=10000,
 )
 
-resume_from_checkpoint = False
-# stage = 'predict' 
+resume_from_checkpoint = True
+stage = 'predict' 
 #stage = 'test'
-stage = 'fit'
+#stage = 'fit'
 
 
 if resume_from_checkpoint:
@@ -64,7 +64,7 @@ if resume_from_checkpoint:
         test_metrics = trainer.test(unet_regression, datamodule = dm, ckpt_path ="/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=2-step=234.ckpt")
         print(test_metrics)
     elif stage == 'predict':
-        prediction = trainer.predict(unet_regression, datamodule = dm, ckpt_path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=20-step=5292.ckpt")
+        prediction = trainer.predict(unet_regression, datamodule = dm, ckpt_path = "/Users/diegobengochea/git/iberian.carbon/deep_learning/epoch=22-step=5658.ckpt")
         #print(prediction)
     else:
         trainer.fit(unet_regression, datamodule=dm, ckpt_path="/Users/diegobengochea/git/iberian.carbon/deep_learning/model_0_weights/epoch=2-step=234.ckpt")

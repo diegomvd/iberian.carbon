@@ -216,7 +216,6 @@ class Sentinel2MinMaxNormalize(K.IntensityAugmentationBase2D):
 class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
 
     seed = 4356578
-    predict_patch_size = 512
     nan_value = -1.0
 
     # Could benefit from a parameter Nan in target to make sure that nodata value is not hardcoded.
