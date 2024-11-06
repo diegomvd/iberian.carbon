@@ -22,10 +22,10 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
 
             # Check if tile intersects with Spain
             tile = geometry.box(minx=index.minx, maxx=index.maxx, miny=index.miny, maxy=index.maxy)
-            spain = gpd.read_file('data/SpainPolygon/gadm41_ESP_0.shp')
+            spain = gpd.read_file('/Users/diegobengochea/git/iberian.carbon/data/SpainPolygon/gadm41_ESP_0.shp')
             spain['geometry'] = spain['geometry'].to_crs('epsg:25830')
 
-            if intersects(spain['geometry'],tile):
+            if intersects(spain['geometry'],tile).any():
 
                 transform = from_bounds(index.minx,index.miny,index.maxx,index.maxy,predicted_patch[0].shape[0],predicted_patch[0].shape[1])
 
@@ -48,7 +48,7 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
                     compress='lzw'    
                 ) as new_dataset:
                     new_dataset.write(predicted_patch[0].cpu(), 1)
-                    new_dataset.update_tags(DATE = year)
+                    new_dataset.update_tags(DATE = index.mint)
 
         # In function of how comes the information just use the tensor image to build a raster with the corresponding raster bounds.
 
