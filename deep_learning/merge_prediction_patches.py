@@ -4,6 +4,7 @@ from rasterio.merge import merge
 from pathlib import Path
 import re
 import odc.geo
+import odc.geo.geobox
 import geopandas as gpd
 
 target = 'canopy_height_full_data'
