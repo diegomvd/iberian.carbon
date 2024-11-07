@@ -29,7 +29,7 @@ def convert_years(year):
 
 spain = gpd.read_file('/Users/diegobengochea/git/iberian.carbon/data/SpainPolygon/gadm41_ESP_0.shp')
 # Reproject to UTM30 EPSG:25830
-spain = spain.[['geometry','COUNTRY']].to_crs(epsg='25830')
+spain = spain[['geometry','COUNTRY']].to_crs(epsg='25830')
 # Add CRS information to shapely polygon
 geometry_spain = odc.geo.geom.Geometry(spain.geometry[0],crs='EPSG:25830')
 # Create a GeoBox for all continental Spain with a 10 meters resolution 
