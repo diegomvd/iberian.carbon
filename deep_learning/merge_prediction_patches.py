@@ -40,10 +40,8 @@ geometry_spain = odc.geo.geom.Geometry(spain.geometry[0],crs='EPSG:25830')
 geobox_spain = odc.geo.geobox.GeoBox.from_geopolygon(geometry_spain,resolution=10) # The resolution here is irrelevant since the Spain GeoBOX is too large to make queries, adn thus cannot be used as intersect. Only used to create tiles of suitable shape 20km2
 
 # Divide the full geobox in Geotiles of 120kmx120km
-geotiles_spain = odc.geo.geobox.GeoboxTiles(geobox_spain,(12000,12000))
+geotiles_spain = odc.geo.geobox.GeoboxTiles(geobox_spain,(24000,24000))
 geotiles_spain = [ geotiles_spain.__getitem__(tile) for tile in geotiles_spain._all_tiles() ]
-
-
 
 # This is useful if all prediction would be ready, in the meanwhile select manually the years to merge
 # all_files = Path(path).glob('*.tif')
@@ -54,7 +52,9 @@ args_list = list(itertools.product(geotiles_spain, years))
 
 predictions = f"/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_{target}_CNIG/0/"
 
-for args in args_list:
+for i,args in enumerate(args_list):
+
+    print(f'Processing {i} out of {len(args_list)}')
 
     # Buffer the tile to prevent stitching artifacts
     original_tile = args[0]
@@ -72,7 +72,7 @@ for args in args_list:
     lon = tile_bbox_latlon.left 
     lat = tile_bbox_latlon.top   
 
-    all_files = [file for file in Path(predictions).glob(f'*{year}.tif') ] 
+    all_files = [file for file in Path(predictions).glob(f'*{year}.0.tif') ] 
 
     files_to_merge = []
     for fname in all_files:
