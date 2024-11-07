@@ -91,7 +91,7 @@ for args in args_list:
 
     year_to_print = convert_years(year)
     lat_to_print=np.round(lat,0)
-    if lon > 0
+    if lon > 0:
         lon_to_print = np.round(lon,0)
         savepath = f"/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_{target}_CNIG/merged_120km/{target}_{year_to_print}_N{lat_to_print}_E{lon_to_print}.tif" 
     else:
