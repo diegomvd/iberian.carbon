@@ -45,7 +45,7 @@ geotiles_spain = [ geotiles_spain.__getitem__(tile) for tile in geotiles_spain._
 # all_files = Path(path).glob('*.tif')
 # years = {re.search(r'_mint_(*).tif',fname.stem).group() for fname in all_files}
 
-years = [1514761200,1546297200]
+years = [1514761200,1546297200,1577833200]
 args_list = list(itertools.product(geotiles_spain, years))
 
 predictions = f"/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_{target}_CNIG/0/"
