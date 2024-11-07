@@ -3,11 +3,12 @@ import numpy as np
 from rasterio.merge import merge 
 from pathlib import Path
 import re
+import odc.geo
 
 target = 'canopy_height_full_data'
 # target = 'landcover_segmentation'
 
-def convert_years(year)
+def convert_years(year):
     match year:
         case 1514761200:
             return 2018
