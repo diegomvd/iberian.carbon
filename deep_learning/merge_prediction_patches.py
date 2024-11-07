@@ -78,7 +78,7 @@ for args in args_list:
                 bounds.bottom,
                 bounds.right,
                 bounds.top)
-            if shapely.intersects(tile_shapely_box,prediction_shapely_box)
+            if shapely.intersects(tile_shapely_box,prediction_shapely_box):
                 files_to_merge.append(fname)
             else:
                 continue 
