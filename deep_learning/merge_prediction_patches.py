@@ -7,6 +7,7 @@ import odc.geo
 import odc.geo.geobox
 import geopandas as gpd
 import itertools
+import shapely
 
 target = 'canopy_height_full_data'
 # target = 'landcover_segmentation'
