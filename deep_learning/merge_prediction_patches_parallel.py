@@ -113,7 +113,7 @@ def merge_and_save(orginal_tile,year):
 
 # Instantiate Dask cluster
 # cluster = dask.distributed.LocalCluster(n_workers = 18, threads_per_worker = 1)
-client = dask.distributed.Client()
+client = dask.distributed.Client(processes=False)
 
 # This is useful if all prediction would be ready, in the meanwhile select manually the years to merge
 # all_files = Path(path).glob('*.tif')
