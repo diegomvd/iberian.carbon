@@ -112,8 +112,8 @@ def merge_and_save(orginal_tile,year):
         print(f'No files in tile {tile_bbox}')
 
 # Instantiate Dask cluster
-cluster = dask.distributed.LocalCluster(n_workers = 18, threads_per_worker = 1)
-client = dask.distributed.Client(cluster)
+# cluster = dask.distributed.LocalCluster(n_workers = 18, threads_per_worker = 1)
+client = dask.distributed.Client()
 
 # This is useful if all prediction would be ready, in the meanwhile select manually the years to merge
 # all_files = Path(path).glob('*.tif')
