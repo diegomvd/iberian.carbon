@@ -47,7 +47,7 @@ geotiles_spain = [ geotiles_spain.__getitem__(tile) for tile in geotiles_spain._
 
 predictions = f"/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_{target}_CNIG/0/"
 
-def merge_and_save(orginal_tile,year):
+def merge_and_save(original_tile,year):
 
     tile = original_tile.buffered(2650) # in meters
     
