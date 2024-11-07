@@ -9,6 +9,7 @@ import geopandas as gpd
 import itertools
 import shapely
 import dask.distributed
+from multiprocessing import freeze_support
 
 #target = 'canopy_height_full_data'
 target = 'landcover_segmentation'
@@ -111,13 +112,16 @@ def merge_and_save(orginal_tile,year):
         print(f'No files in tile {tile_bbox}')
 
 # Instantiate Dask cluster
-cluster = dask.distributed.LocalCluster(n_workers = 21, threads_per_worker = 1)
+cluster = dask.distributed.LocalCluster(n_workers = 18, threads_per_worker = 1)
 client = dask.distributed.Client(cluster)
 
 # This is useful if all prediction would be ready, in the meanwhile select manually the years to merge
 # all_files = Path(path).glob('*.tif')
 # years = {re.search(r'_mint_(*).tif',fname.stem).group() for fname in all_files}
 if __name__ == '__main__':
+
+    freeze_support()
+
     years = [1514761200,1546297200,1577833200]
     args_list = list(itertools.product(geotiles_spain, years))
 
