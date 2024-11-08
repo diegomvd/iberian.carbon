@@ -401,6 +401,7 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
         collate_map = {torch.Tensor : _utils.collate.collate_tensor_fn, CRS : Sentinel2PNOAVnDSMDataModule.collate_crs_fn, BoundingBox : Sentinel2PNOAVnDSMDataModule.collate_bbox_fn}
         return _utils.collate.collate(batch, collate_fn_map=collate_map)
 
+    # Just commenting to push
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
         
         if isinstance(batch, dict):
