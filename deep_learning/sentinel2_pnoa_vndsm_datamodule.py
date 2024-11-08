@@ -280,7 +280,6 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
                     random_apply=2
                 ),
                 'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
-                'mask' : K.AugmentationSequential(PNOAVnDSMSegmentationClasses(),data_keys=None, keepdim=True)
             }
 
             self.predict_aug = {
@@ -289,7 +288,6 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
 
             self.aug = {
                 'image' : K.AugmentationSequential(Sentinel2MinMaxNormalize(mins,maxs),data_keys=None,keepdim=True),
-                'mask' : K.AugmentationSequential(PNOAVnDSMSegmentationClasses(),data_keys=None, keepdim=True)
             }    
 
     def on_after_batch_transfer(
@@ -405,12 +403,10 @@ class Sentinel2PNOAVnDSMDataModule(GeoDataModule):
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
         
         if isinstance(batch, dict):
-            print('Here')
             # move all tensors in your custom data structure to the device
             batch['image'] = batch['image'].to(device)
             if not self.trainer.predicting:
                 batch['mask'] = batch['mask'].float().to(device)
         else:
-            print('There')
             batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
         return batch    
