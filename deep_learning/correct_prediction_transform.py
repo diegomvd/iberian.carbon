@@ -167,5 +167,5 @@ for i,args in enumerate(args_list):
                 nodata=-1.0,
                 compress='lzw'    
             ) as new_dataset:
-                new_dataset.write(cropped[0,0,:,:], 1)
+                new_dataset.write(cropped[0,:,:], 1)
                 new_dataset.update_tags(DATE = year_to_print)
