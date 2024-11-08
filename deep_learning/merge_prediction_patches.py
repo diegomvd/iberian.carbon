@@ -72,52 +72,54 @@ for i,args in enumerate(args_list):
     lon = tile_bbox_latlon.left 
     lat = tile_bbox_latlon.top   
 
-    all_files = [file for file in Path(predictions).glob(f'*{year}.0.tif') ] 
-
-    files_to_merge = []
-    for fname in all_files:
-        with rasterio.open(fname) as src:
-            bounds = src.bounds
-            prediction_shapely_box = shapely.box(
-                bounds.left,
-                bounds.bottom,
-                bounds.right,
-                bounds.top)
-            if shapely.intersects(tile_shapely_box,prediction_shapely_box):
-                files_to_merge.append(fname)
-            else:
-                continue 
-
-    if len(files_to_merge) > 0:        
-        image_sum, transform_sum = merge(files_to_merge, method = 'sum')
-        image_count, transform_count = merge(files_to_merge, method = 'count')
-        # Final image averaging overlapping tile buffers
-        image = image_sum/image_count
-
-        year_to_print = convert_years(year)
-        lat_to_print=np.round(lat,0)
-        if lon > 0:
-            lon_to_print = np.round(lon,0)
-            savepath = f"/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_{target}_CNIG/merged_120km/{target}_{year_to_print}_N{lat_to_print}_E{lon_to_print}.tif" 
-        else:
-            lon_to_print = np.round(-lon,0)
-            savepath = f"/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_{target}_CNIG/merged_120km/{target}_{year_to_print}_N{lat_to_print}_W{lon_to_print}.tif" 
-
-        with rasterio.open(
-                savepath,
-                mode="w",
-                driver="GTiff",
-                height=image.shape[-2],
-                width=image.shape[-1],
-                count=1,
-                dtype= 'float32',
-                crs="epsg:25830",
-                transform=original_tile.transform,
-                nodata=-1.0,
-                compress='lzw'    
-            ) as new_dataset:
-                new_dataset.write(image[0,:,:], 1)
-                new_dataset.update_tags(DATE = year_to_print)
+    year_to_print = convert_years(year)
+    lat_to_print=np.round(lat,0)
+    if lon > 0:
+        lon_to_print = np.round(lon,0)
+        savepath = f"/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_{target}_CNIG/merged_120km/{target}_{year_to_print}_N{lat_to_print}_E{lon_to_print}.tif" 
     else:
-        print(f'No files in tile {tile_bbox}')            
+        lon_to_print = np.round(-lon,0)
+        savepath = f"/Users/diegobengochea/git/iberian.carbon/deep_learning/predictions_{target}_CNIG/merged_120km/{target}_{year_to_print}_N{lat_to_print}_W{lon_to_print}.tif" 
+
+    if not Path(savepath).exists():
+
+        all_files = [file for file in Path(predictions).glob(f'*{year}.0.tif') ] 
+
+        files_to_merge = []
+        for fname in all_files:
+            with rasterio.open(fname) as src:
+                bounds = src.bounds
+                prediction_shapely_box = shapely.box(
+                    bounds.left,
+                    bounds.bottom,
+                    bounds.right,
+                    bounds.top)
+                if shapely.intersects(tile_shapely_box,prediction_shapely_box):
+                    files_to_merge.append(fname)
+                else:
+                    continue 
+
+        if len(files_to_merge) > 0:        
+            image_sum, transform_sum = merge(files_to_merge, method = 'sum')
+            image_count, transform_count = merge(files_to_merge, method = 'count')
+            # Final image averaging overlapping tile buffers
+            image = image_sum/image_count
+            
+            with rasterio.open(
+                    savepath,
+                    mode="w",
+                    driver="GTiff",
+                    height=image.shape[-2],
+                    width=image.shape[-1],
+                    count=1,
+                    dtype= 'float32',
+                    crs="epsg:25830",
+                    transform=transform_count,#original_tile.transform,
+                    nodata=-1.0,
+                    compress='lzw'    
+                ) as new_dataset:
+                    new_dataset.write(image[0,:,:], 1)
+                    new_dataset.update_tags(DATE = year_to_print)
+        else:
+            print(f'No files in tile {tile_bbox}')            
 
