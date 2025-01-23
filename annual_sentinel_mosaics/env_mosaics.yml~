@@ -1,0 +1,16 @@
+name: s2.mosaics
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - rasterio=1.4.2
+  - odc-stac=0.3.10
+  - numpy=2.1
+  - pip
+  - rioxarray=0.17
+  - geopandas=1.0.1
+  - dask
+  - asyncssh
+  - boto3
+  - pip:
+    - pystac-client

@@ -1,4 +1,4 @@
-name: sentinel.mosaics
+name: s2.mosaic
 channels:
   - conda-forge
 dependencies:
@@ -7,8 +7,6 @@ dependencies:
   - odc-stac
   - numpy=1.26.4
   - pip
-  - jupyter
-  - ipykernel
   - rioxarray
   - geopandas
   - dask
