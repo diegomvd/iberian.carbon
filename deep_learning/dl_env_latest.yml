@@ -1,18 +1,18 @@
-name: dl.carbon
+name: dl.carbon.latest
 channels:
   - conda-forge
 dependencies:
   - python=3.12
-  - torchgeo=0.5.2
+  - torchgeo
   - rasterio
   - lightning
   - pytorch
-  - numpy=1.26.4
+  - numpy=2.1
   - natsort
   - geopandas
   - shapely
+  - kornia
   - pip
   - pip:
     - kornia-rs
-    - kornia 
-    - "ray[default]" 
+    - "ray[default]"

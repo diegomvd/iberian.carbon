@@ -10,18 +10,29 @@ from s2_pnoa_vegetation_datamodule import S2PNOAVegetationDataModule
 from canopy_height_regression import CanopyHeightRegressionTask
 from prediction_writer import CanopyHeightRasterWriter
 
+from datetime import datetime
+
+# Configuration
+DATA_DIR = '/Users/diegobengochea/git/iberian.carbon/data/S2_PNOA_DATASET/'
+CHECKPOINT_DIR = '/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints_universal_test_B2_pNorm_gamma_2_beta_1.5/'
+CHECKPOINT_PATH = None
+MAX_LR = 1e-4
+
+#CHECKPOINT_PATH = "/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints_universal_test_B2_pNorm_gamma_2_beta_1.5/last.ckpt"
+
+
 class ModelTrainingPipeline:
     def __init__(
         self,
         data_dir: str,
         checkpoint_dir: str = "canopy_height_checkpoints",
-        predict_patch_size: int = 8000,
-        learning_rate: float = 0.001,
-        patience: int = 10,
-        early_stopping_patience: int = 100,
-        max_epochs: int = 10000,
+        predict_patch_size: int = 6144,
+        learning_rate: float = 1e-4,
+        patience: int = 15,
+        early_stopping_patience: int = 50,
+        max_epochs: int = 100,
         val_check_interval: int = 1,
-        log_steps: int = 50
+        log_steps: int = 698
     ):
         """
         Initialize the training pipeline with configuration parameters.
@@ -67,7 +78,8 @@ class ModelTrainingPipeline:
     def _setup_model(self):
         """Initialize the model."""
         self.model = CanopyHeightRegressionTask(
-            nan_value=self.datamodule.hparams['nan_target'],
+            nan_value_target=self.datamodule.hparams['nan_target'],
+            nan_value_input=self.datamodule.hparams['nan_input'],
             lr=self.config["learning_rate"],
             patience=self.config["patience"]
         )
@@ -92,7 +104,7 @@ class ModelTrainingPipeline:
         )
         
         pred_writer = CanopyHeightRasterWriter(
-            spain_shapefile='/Users/diegobengochea/git/iberian.carbon/data/SpainPolygon/gadm41_ESP_0.shp',
+            #spain_shapefile='/Users/diegobengochea/git/iberian.carbon/data/SpainPolygon/gadm41_ESP_0.shp',
             output_dir="canopy_height_predictions",
             write_interval="batch"
         )
@@ -107,10 +119,11 @@ class ModelTrainingPipeline:
             check_val_every_n_epoch=self.config["val_check_interval"],
             accelerator=accelerator,
             devices="auto",
-            callbacks=[checkpoint_callback, early_stopping_callback, pred_writer],
+            callbacks=[checkpoint_callback, pred_writer],
             log_every_n_steps=self.config["log_steps"],
             logger=csv_logger,
             max_epochs=self.config["max_epochs"],
+            accumulate_grad_batches=1,
             num_sanity_val_steps=1  # Add this to check validation setup
         )
 
@@ -121,8 +134,11 @@ class ModelTrainingPipeline:
         Args:
             checkpoint_path: Optional path to checkpoint for resuming training
         """
-        self.trainer.fit(self.model, self.datamodule, ckpt_path=checkpoint_path)
-
+        if checkpoint_path is None:
+            self.trainer.fit(self.model, self.datamodule)
+        else:
+            self.trainer.fit(self.model, self.datamodule, ckpt_path=checkpoint_path)
+            
     def test(self, checkpoint_path: str):
         """
         Test the model using a specific checkpoint.
@@ -152,30 +168,68 @@ class ModelTrainingPipeline:
         return predictions
 
 def main():
-    # Configuration
-    DATA_DIR = '/Users/diegobengochea/git/iberian.carbon/data/S2_PNOA_DATASET/'
-    CHECKPOINT_DIR = '/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints/'
-    CHECKPOINT_PATH = "/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints/epoch=99-step=47600.ckpt"
-    
-    # Initialize pipeline
-    pipeline = ModelTrainingPipeline(
-        data_dir=DATA_DIR,
-        checkpoint_dir=CHECKPOINT_DIR,
-        learning_rate=0.001,
-        patience=10,
-        early_stopping_patience=100,
-        max_epochs=10000
-    )
-    
     # Choose operation mode
     mode: Literal['train', 'test', 'predict'] = 'train'
     
     try:
         if mode == 'train':
+            pipeline = ModelTrainingPipeline(
+                data_dir=DATA_DIR,
+                checkpoint_dir=CHECKPOINT_DIR,
+                learning_rate=MAX_LR,
+                max_epochs=100
+            )
             pipeline.train(checkpoint_path=CHECKPOINT_PATH)
         elif mode == 'test':
-            test_metrics = pipeline.test(checkpoint_path=CHECKPOINT_PATH)
-            print(f"Test metrics: {test_metrics}")
+            # Define checkpoints and their identifiers
+            MODEL_CONFIGS = [
+                {
+                    'path': "/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints_3ensemble/last0-2m.ckpt",
+                    'name': "deeplabv3plus_efficientb4_0-2m"
+                },
+                {
+                    'path': "/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints_3ensemble/last2-10m.ckpt",
+                    'name': "deeplabv3plus_efficientb4_2-10m"
+                },
+                {
+                    'path': "/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints_3ensemble/last10m+.ckpt",
+                    'name': "deeplabv3plus_efficientb4_10m+"
+                }
+            ]
+            for model_config in MODEL_CONFIGS:
+                print(f"\n{'='*80}")
+                print(f"Testing model: {model_config['name']}")
+                print(f"Checkpoint: {model_config['path']}")
+                print(f"{'='*80}\n")
+                
+                try:
+                    # Create a new pipeline for each model to ensure separate logging
+                    test_pipeline = ModelTrainingPipeline(
+                        data_dir=DATA_DIR,
+                        checkpoint_dir=CHECKPOINT_DIR,
+                        learning_rate=2e-4,
+                        patience=15,
+                        early_stopping_patience=20,
+                        max_epochs=100
+                    )
+                    
+                    # Create model-specific logger
+                    csv_logger = CSVLogger(
+                        save_dir=CHECKPOINT_DIR,
+                        name=f"test_metrics_{model_config['name']}",
+                        version=datetime.now().strftime("%Y%m%d_%H%M%S")
+                    )
+                    
+                    # Update trainer with new logger
+                    test_pipeline.trainer.logger = csv_logger
+                    
+                    # Run test
+                    test_metrics = test_pipeline.test(checkpoint_path=model_config['path'])
+                    print(f"Test metrics: {test_metrics}")
+                    
+                except Exception as e:
+                    print(f"Error testing checkpoint {model_config['path']}: {str(e)}")
+                    continue
         elif mode == 'predict':
             predictions = pipeline.predict(checkpoint_path=CHECKPOINT_PATH)
             print("Predictions generated successfully")
