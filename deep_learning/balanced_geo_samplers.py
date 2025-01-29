@@ -4,6 +4,85 @@ from typing import List, Iterator, Tuple
 from torchgeo.samplers.utils import get_random_bounding_box
 from torchgeo.datasets.utils import BoundingBox
 
+class WeightedHeightComplexitySampler(RandomBatchGeoSampler):
+    def __init__(
+        self,
+        dataset,
+        patch_size: int,
+        batch_size: int,
+        length: int,
+        height_exp: float = 2.0,         # Height weighting power
+        min_valid_ratio: float = 0.5,
+        oversample_factor: float = 10.0,
+        nan_value: float = -32767.0
+    ):
+        super().__init__(dataset, patch_size, batch_size, length)
+        self.height_exp = height_exp  
+        self.min_valid_ratio = min_valid_ratio
+        self.oversample_factor = oversample_factor
+        self.nan_value = nan_value
+
+    def _calculate_patch_score(self, heights: torch.Tensor) -> Tuple[float, float]:
+        """Calculate height score and complexity score for a patch."""
+        # Get valid heights
+        valid_mask = heights != self.nan_value
+        valid_ratio = valid_mask.float().mean().item()
+        
+        if valid_ratio < self.min_valid_ratio:
+            return 0.0, 0.0
+            
+        valid_heights = heights[valid_mask]
+        if len(valid_heights) == 0:
+            return 0.0, 0.0
+
+        # Height score using exponential weighting
+        height_score = torch.mean(torch.pow(torch.clamp(valid_heights/15.0, min=0), self.height_exp))
+        
+        # Complexity using coefficient of variation (computationally efficient)
+        mean = valid_heights.mean()
+        if mean == 0:
+            return height_score.item(), 0.0
+            
+        std = valid_heights.std()
+        complexity_score = (std / mean).item()  # CV as complexity measure
+
+        return height_score.item(), complexity_score
+
+    def _evaluate_patch(self, patch_data: dict) -> float:
+        """Combine height and complexity scores based on current weights."""
+        if 'mask' not in patch_data:
+            return 0.0
+            
+        height_score, complexity_score = self._calculate_patch_score(patch_data['mask'])
+        return torch.sqrt(height_score * complexity_score).item()
+
+    def __iter__(self) -> Iterator[List[BoundingBox]]:
+        for _ in range(len(self)):
+            idx = torch.multinomial(self.areas, 1)
+            hit = self.hits[idx]
+            bounds = BoundingBox(*hit.bounds)
+            
+            n_candidates = int(self.batch_size * self.oversample_factor)
+            candidates = []
+            
+            for _ in range(n_candidates):
+                bounding_box = get_random_bounding_box(bounds, self.size, self.res)
+                patch_data = self.dataset.datasets[1][bounding_box]
+                
+                if 'mask' in patch_data:
+                    score = self._calculate_tall_vegetation_score(patch_data['mask'])
+                    candidates.append((bounding_box, score))
+            
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            selected_bboxes = [c[0] for c in candidates[:self.batch_size]]
+            
+            while len(selected_bboxes) < self.batch_size:
+                bounding_box = get_random_bounding_box(bounds, self.size, self.res)
+                selected_bboxes.append(bounding_box)
+                
+            yield selected_bboxes    
+
+
 class TallVegetationSampler(RandomBatchGeoSampler):
     """
     Batch sampler maximizing exposure to tall vegetation by prioritizing 

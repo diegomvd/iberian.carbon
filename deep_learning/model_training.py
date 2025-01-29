@@ -14,27 +14,22 @@ from datetime import datetime
 
 # Configuration
 DATA_DIR = '/Users/diegobengochea/git/iberian.carbon/data/S2_PNOA_DATASET/'
-CHECKPOINT_DIR = '/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints_universal_enB4_unet_logL1_rangereg_595_lambda_0.35_reducedtiles_alpha0.4_stage2_TESTING/'
-#CHECKPOINT_PATH = '/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints_universal_enB4_unet_logL1_rangereg_1090_lambda_0.35_reducedtiles/epoch-.ckpt'
+CHECKPOINT_DIR = '/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints_curriculum_maxLR__pctstart__div__finaldiv_/'
+CHECKPOINT_PATH = None
 MAX_LR = 1e-5
-
-TEACHER_CHECKPOINT = None#'/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints_universal_enB4_unet_logL1_rangereg_1090_lambda_0.35_reducedtiles/epoch-.ckpt'
-
-#CHECKPOINT_PATH = '/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_checkpoints_universal_enB4_unet_mseweight_logtest/last.ckpt'
 
 class ModelTrainingPipeline:
     def __init__(
         self,
         data_dir: str,
         checkpoint_dir: str = "canopy_height_checkpoints",
-        teacher_checkpoint: Optional[str] = None,
         predict_patch_size: int = 6144,
         learning_rate: float = 1e-4,
         patience: int = 15,
         early_stopping_patience: int = 50,
         max_epochs: int = 100,
         val_check_interval: int = 1,
-        log_steps: int = 698
+        log_steps: int = 50
     ):
         """
         Initialize the training pipeline with configuration parameters.
@@ -52,7 +47,6 @@ class ModelTrainingPipeline:
         """
         self.data_dir = Path(data_dir)
         self.checkpoint_dir = Path(checkpoint_dir)
-        self.teacher_checkpoint = teacher_checkpoint
         self.config = {
             "predict_patch_size": predict_patch_size,
             "learning_rate": learning_rate,
@@ -80,19 +74,7 @@ class ModelTrainingPipeline:
 
     def _setup_model(self):
         """Initialize the model."""
-        teacher_model = None
-        if self.teacher_checkpoint:
-            teacher_model = CanopyHeightRegressionTask.load_from_checkpoint(
-                self.teacher_checkpoint,
-                nan_value_target=self.datamodule.hparams['nan_target'],
-                nan_value_input=self.datamodule.hparams['nan_input']
-            )
-            teacher_model.eval()
-            for param in teacher_model.parameters():
-                param.requires_grad = False
-
         self.model = CanopyHeightRegressionTask(
-            teacher_model = teacher_model,
             nan_value_target=self.datamodule.hparams['nan_target'],
             nan_value_input=self.datamodule.hparams['nan_input'],
             lr=self.config["learning_rate"],
@@ -191,9 +173,8 @@ def main():
             pipeline = ModelTrainingPipeline(
                 data_dir=DATA_DIR,
                 checkpoint_dir=CHECKPOINT_DIR,
-                teacher_checkpoint=TEACHER_CHECKPOINT,
                 learning_rate=MAX_LR,
-                max_epochs=200
+                max_epochs=300
             )
             pipeline.train(checkpoint_path=CHECKPOINT_PATH)
         elif mode == 'test':

@@ -10,7 +10,7 @@ import torch
 from torch import Tensor, Generator
 from torch.utils.data import DataLoader, _utils
 
-from balanced_geo_samplers import HeightDiversityBatchSampler, ProgressiveGeoSampler, TallVegetationSampler
+from balanced_geo_samplers import WeightedHeightComplexitySampler
 
 from pnoa_vegetation_transforms import PNOAVegetationInput0InArtificialSurfaces, PNOAVegetationRemoveAbnormalHeight, PNOAVegetationLogTransform, S2Scaling
 
@@ -28,7 +28,7 @@ from typing import Dict, Optional, Union, Type, Tuple, Callable, List, Iterator
 class Config:
     DEFAULT_NAN_INPUT = 0.0 #-9999.0
     DEFAULT_PATCH_SIZE = 256
-    DEFAULT_BATCH_SIZE = 16
+    DEFAULT_BATCH_SIZE = 32
     DEFAULT_PREDICT_PATCH_SIZE = 2048
     DEFAULT_NAN_TARGET = -1.0
     DEFAULT_SEED = 43554578
@@ -45,7 +45,8 @@ class S2PNOAVegetationDataModule(GeoDataModule):
         seed: int = Config.DEFAULT_SEED, 
         predict_patch_size: int = Config.DEFAULT_PREDICT_PATCH_SIZE,
         nan_target: float = Config.DEFAULT_NAN_TARGET,
-        nan_input: float = Config.DEFAULT_NAN_INPUT    
+        nan_input: float = Config.DEFAULT_NAN_INPUT,
+        phase_epochs: List[int] = [50,50,50,75,75]  
     ):
 
         super().__init__(
@@ -54,6 +55,12 @@ class S2PNOAVegetationDataModule(GeoDataModule):
         
         self.save_hyperparameters()
         self._setup_augmentations()
+        self.phase_epochs = np.cumsum(phase_epochs)
+        self.current_epoch = 0
+
+    def get_current_phase(self, epoch:int) -> int:
+        self.current_epoch = epoch
+        return torch.searchsorted(self.phase_epochs, epoch)
 
     def _setup_augmentations(self) -> None:
         """Initialize all augmentation pipelines with enhanced transforms."""
@@ -163,6 +170,57 @@ class S2PNOAVegetationDataModule(GeoDataModule):
         stride = size - 256
         self.predict_sampler = GridGeoSampler(self.predict_dataset, size, stride)
 
+    def train_dataloader(self) -> DataLoader:
+        phase = self.get_current_phase(self.trainer.current_epoch)
+        
+        if phase == 0:  # Phase 1: slight emphasis on taller trees while keeping some complexity
+            sampler = WeightedHeightComplexitySampler(
+                self.train_dataset,
+                self.hparams.patch_size,
+                self.hparams.batch_size,
+                self.hparams.length,
+                height_exp = 1.5,         
+            )
+        elif phase == 1:  # Phase 2: aggressive emphasis on tall trees while keeping some complexity
+            sampler = WeightedHeightComplexitySampler(
+                self.train_dataset,
+                self.hparams.patch_size,
+                self.hparams.batch_size,
+                self.hparams.length,
+                height_exp = 3.0,   
+            )
+        elif phase == 2:  # Phase 3: less agressive emphasis on tall trees
+            sampler = WeightedHeightComplexitySampler(
+                self.train_dataset,
+                self.hparams.patch_size,
+                self.hparams.batch_size,
+                self.hparams.length,
+                height_exp = 1.5,   
+            )
+        elif phase == 3:  # Phase 4 mild emphasis on tall trees
+            sampler = WeightedHeightComplexitySampler(
+                self.train_dataset,
+                self.hparams.patch_size,
+                self.hparams.batch_size,
+                self.hparams.length,
+                height_exp = 0.5,   
+            )   
+        elif phase == 4:  # Phase 4 only focuses on complexity
+            sampler = WeightedHeightComplexitySampler(
+                self.train_dataset,
+                self.hparams.patch_size,
+                self.hparams.batch_size,
+                self.hparams.length,
+                height_exp = 0.0,   
+            )    
+
+        return DataLoader(
+            self.train_dataset,
+            batch_sampler=sampler,
+            num_workers=self.num_workers,
+            collate_fn=self.collate_fn
+        )
+
     def _setup_train_val_test(self, s2: S2Mosaic) -> None:
         """Set up training, validation and test datasets and samplers."""
         pnoa_vegetation = PNOAVegetation(self.hparams.data_dir)
@@ -178,21 +236,14 @@ class S2PNOAVegetationDataModule(GeoDataModule):
         self.train_dataset, self.val_dataset, self.test_dataset = splits
         
         # Set up samplers based on stage
-        if self.trainer.training:
-            self.train_batch_sampler = TallVegetationSampler(
-                self.train_dataset,
-                self.hparams.patch_size,
-                self.hparams.batch_size,
-                self.hparams.length
-            )
+        # if self.trainer.training:
+        #     self.train_batch_sampler = TallVegetationSampler(
+        #         self.train_dataset,
+        #         self.hparams.patch_size,
+        #         self.hparams.batch_size,
+        #         self.hparams.length
+        #     )
 
-          #  self.train_batch_sampler = RandomBatchGeoSampler(
-          #      self.train_dataset,
-          #      self.hparams.patch_size,
-          #      self.hparams.batch_size,
-          #      self.hparams.length
-          #  )
-        
         if self.trainer.training or self.trainer.validating:
             self.val_sampler = GridGeoSampler(
                 self.val_dataset,
