@@ -13,5 +13,5 @@ class S2Mosaic(RasterDataset):
 
     separate_files = False
 
-    nan_value = -9999
+    nan_value = 0
 

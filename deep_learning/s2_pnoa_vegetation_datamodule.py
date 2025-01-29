@@ -10,9 +10,9 @@ import torch
 from torch import Tensor, Generator
 from torch.utils.data import DataLoader, _utils
 
-from balanced_geo_samplers import HeightDiversityBatchSampler
+from balanced_geo_samplers import HeightDiversityBatchSampler, ProgressiveGeoSampler, TallVegetationSampler
 
-from pnoa_vegetation_transforms import PNOAVegetationInput0InArtificialSurfaces, PNOAVegetationRemoveAbnormalHeight
+from pnoa_vegetation_transforms import PNOAVegetationInput0InArtificialSurfaces, PNOAVegetationRemoveAbnormalHeight, PNOAVegetationLogTransform, S2Scaling
 
 from torchgeo.samplers import RandomBatchGeoSampler, GridGeoSampler
 
@@ -26,9 +26,9 @@ from rasterio.crs import CRS
 from typing import Dict, Optional, Union, Type, Tuple, Callable, List, Iterator
 
 class Config:
-    DEFAULT_NAN_INPUT = -9999.0
+    DEFAULT_NAN_INPUT = 0.0 #-9999.0
     DEFAULT_PATCH_SIZE = 256
-    DEFAULT_BATCH_SIZE = 32
+    DEFAULT_BATCH_SIZE = 16
     DEFAULT_PREDICT_PATCH_SIZE = 2048
     DEFAULT_NAN_TARGET = -1.0
     DEFAULT_SEED = 43554578
@@ -62,6 +62,7 @@ class S2PNOAVegetationDataModule(GeoDataModule):
         base_mask_transforms = K.AugmentationSequential(
             PNOAVegetationRemoveAbnormalHeight(nan_target=self.hparams.nan_target),
             PNOAVegetationInput0InArtificialSurfaces(),
+            PNOAVegetationLogTransform(),
             data_keys=None,
             keepdim=True
         )
@@ -77,6 +78,7 @@ class S2PNOAVegetationDataModule(GeoDataModule):
                 same_on_batch=False,
             ),
             'image': K.AugmentationSequential(
+                S2Scaling(),
                 # Reduced intensity augmentations for mosaiced data
                 K.RandomGaussianNoise(mean=0.0, std=0.05, p=0.3),
                 K.RandomBrightness(brightness=0.1, p=0.3),
@@ -98,11 +100,13 @@ class S2PNOAVegetationDataModule(GeoDataModule):
 
         # Validation/Test augmentations - keep only normalization
         self.val_aug = self.test_aug = {
+            'image':K.AugmentationSequential( S2Scaling(), data_keys=None, keepdim=True),
             'mask': base_mask_transforms
         }
         
         # Prediction augmentations
         self.predict_aug = {
+            'image':K.AugmentationSequential( S2Scaling(), data_keys=None, keepdim=True)
         }
 
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
@@ -175,7 +179,7 @@ class S2PNOAVegetationDataModule(GeoDataModule):
         
         # Set up samplers based on stage
         if self.trainer.training:
-            self.train_batch_sampler = HeightDiversityBatchSampler(
+            self.train_batch_sampler = TallVegetationSampler(
                 self.train_dataset,
                 self.hparams.patch_size,
                 self.hparams.batch_size,

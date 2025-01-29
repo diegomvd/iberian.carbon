@@ -22,24 +22,24 @@ import random
 import dask.dataframe as dd
 # import xarray.ufuncs as xu
 
-ALLOMETRIES_DIR = '/Users/diegobengochea/git/iberian.carbon/data/stocks_NFI4/H_AGB_Allometries_Tiers.csv'
+ALLOMETRIES_DIR = '/Users/diegobengochea/git/iberian.carbon/data/stocks_NFI4/H_AGB_Allometries_Tiers_Final.csv'
 FOREST_TYPE_DIR = '/Users/diegobengochea/git/iberian.carbon/data/stocks_NFI4/Forest_Types_Tiers.csv'
-CANOPY_HEIGHT_DIR = '/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_predictions/merged_240km/'
+CANOPY_HEIGHT_DIR = '/Users/diegobengochea/git/iberian.carbon/data/Vegetation_NDSM_PNOA2/PNOA2_LIDAR_VEGETATION/' #'/Users/diegobengochea/git/iberian.carbon/deep_learning/canopy_height_predictions/merged_240km/'
 MFE_DIR = '/Users/diegobengochea/git/iberian.carbon/data/MFESpain/'
 HEIGHT_THRESHOLD = 0.5 #meters
 TIER_NAMES = {0:'Dummy',1:'Clade',2:'Family',3:'Genus',4:'ForestTypeMFE'}
 
-N_WORKERS=2
-THREADS_PER_WORKER=3
-MEM_PER_WORKER='86Gb'
-CHUNK_SIZE = 800
+N_WORKERS=7
+THREADS_PER_WORKER=2
+MEM_PER_WORKER='22Gb'
+CHUNK_SIZE = 600
 
 ###################################################################
 
 def build_savepath(fname):
     stem = fname.stem
-    specs = re.findall(r'canopy_height_(.*)',stem)[0]
-    savepath = f'/Users/diegobengochea/git/iberian.carbon/data/predictions_AGBD/AGBD_{specs}.tif'
+    specs = re.findall(r'NDSM-VEGETACION-(.*)',stem)[0]#re.findall(r'canopy_height_(.*)',stem)[0]
+    savepath = f'/Users/diegobengochea/git/iberian.carbon/data/AGBD_PNOA2/AGBD_PNOA2_{specs}.tif'
     return savepath
 
 def load_canopy_height_image(src):
@@ -78,7 +78,7 @@ def select_best_allometry(forest_type_input,forest_types,tier_input,allometries,
 
     while tier>=0:  
         try:
-            allom_row = allometries[allometries.Tier==tier].loc[forest_type]
+            allom_row = allometries[allometries.tier==tier].loc[forest_type]
             tier = -1
         except:
             try:
@@ -95,21 +95,28 @@ def select_best_allometry(forest_type_input,forest_types,tier_input,allometries,
                 #     logger.error(f'Error retrieving general allometry: {str(e)}')
                 #     raise
 
-
-    intercept_mean = da.exp(allom_row.Intercept_mean)
-    slope_mean = allom_row.Slope_mean
+    function_type = allom_row.function_type            
+    intercept_mean = da.exp(allom_row.mean_intercept)
+    slope_mean = allom_row.mean_slope
     
-    return intercept_mean, slope_mean
+    return intercept_mean, slope_mean, function_type
 
 
 @dask.delayed
-def apply_allometry(intercept, slope, output_ds, input_ds, mask):
+def apply_allometry(function_type, intercept, slope, output_ds, input_ds, mask):
 
-    output_ds_updated = xr.where(
-        mask,
-        intercept*(input_ds**slope),
-        output_ds
-    )
+    if function_type == 'power':
+        output_ds_updated = xr.where(
+            mask,
+            intercept*(input_ds**slope),
+            output_ds
+        )
+    if function_type == 'exponential':
+        output_ds_updated = xr.where(
+            mask,
+            intercept*np.exp(input_ds*slope),
+            output_ds
+        )    
 
     return output_ds_updated
 
@@ -154,12 +161,13 @@ def calculate_aboveground_biomass(ds_canopy_height,canopy_height_box,allometries
                         coeffs = select_best_allometry(ix,forest_types_table,4,allometries_df,tier_names)
                         intercept_mean = coeffs[0]
                         slope_mean = coeffs[1]
+                        function_type = coeffs[2]
 
                         try:
                             
                             forest_type_mask = create_forest_mask([row.geometry],ds_canopy_height)
 
-                            ds_agb_mean = apply_allometry(intercept_mean,slope_mean,ds_agb_mean,ds_canopy_height,forest_type_mask)
+                            ds_agb_mean = apply_allometry(function_type,intercept_mean,slope_mean,ds_agb_mean,ds_canopy_height,forest_type_mask)
                         
                         except Exception as e:
                             logger.error(f'Error applying allometries {str(e)}')
@@ -255,7 +263,7 @@ if __name__ == '__main__':
 
     logger.info('Loading fitted allometries by forest type tiers.')
 
-    allometries = pd.read_csv(ALLOMETRIES_DIR).set_index('ForestType')
+    allometries = pd.read_csv(ALLOMETRIES_DIR).set_index('forest_type')
     
     logger.info('Loading forest type tiers.')
 

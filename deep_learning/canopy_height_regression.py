@@ -14,75 +14,12 @@ import math
 from torch.optim.lr_scheduler import _LRScheduler
 import numpy as np
 
-from height_regression_losses import RelativeBalancedFocalLoss, RangeSpecificFocalLoss
+from height_regression_losses import RelativeBalancedFocalLoss, RangeSpecificFocalLoss,RangePenaltyBalancedMSELoss, RangeAwareL1Loss, RangeAwareDistilledL1Loss
 
-def get_balanced_universal_loss():
-    return RelativeBalancedFocalLoss(
-        gamma = 2.0,
-        rel_reference = 0.25,
-        min_height = 1.0,
-        weight_href = 2.0,
-        beta = 1.5,
-        reduction = 'none'
-    )
+
+def get_balanced_universal_loss(teacher: nn.Module):
+    return RangeAwareDistilledL1Loss(teacher)
         
-def get_very_low_vegetation_loss():
-    return RangeSpecificFocalLoss(
-        loss_range=(-0.5, 3.5),
-        alpha=1.5,
-        abs_reference=0.1,
-    )
-
-def get_low_medium_vegetation_loss():
-    return RangeSpecificFocalLoss(
-        loss_range=(1.0, 10.0),
-        alpha=4.0, 
-        abs_reference=1.5,
-    )
-
-def get_medium_high_vegetation_loss():
-    return RangeSpecificFocalLoss(
-        loss_range=(6, 18),
-        alpha=4.0,
-        abs_reference=2.0,
-    )
-
-def get_tall_vegetation_loss():
-    return RangeSpecificFocalLoss(
-        loss_range=(14, float('inf')),
-        alpha=3.5,
-        abs_reference=3.0,
-    )
-
-# Loss functions for relative focal weights on L1 loss.
-def get_very_low_vegetation_loss_relative():
-    return RangeSpecificFocalLoss(
-        loss_range=(-0.5, 3.5),
-        alpha=3.5,
-        rel_reference=0.25
-    )
-
-def get_low_medium_vegetation_loss_relative():
-    return RangeSpecificFocalLoss(
-        loss_range=(1.0, 10.0),
-        alpha=3.5, 
-        rel_reference=0.25
-    )
-
-def get_medium_high_vegetation_loss_relative():
-    return RangeSpecificFocalLoss(
-        loss_range=(6, 18),
-        alpha=3.5,
-        rel_reference=0.25,
-    )
-
-def get_tall_vegetation_loss_relative():
-    return RangeSpecificFocalLoss(
-        loss_range=(14, 40),
-        alpha=3.5,
-        rel_reference=0.25,
-    )
-
 class HeightRangeMetrics:
     """Height range specific metrics calculator for canopy height regression"""
     
@@ -144,16 +81,17 @@ class CanopyHeightRegressionTask(PixelwiseRegressionTask):
     
     def __init__(
         self,
-            model: str = 'unet',#'deeplabv3+',
-        backbone: str = "efficientnet-b2",
+        model: str = 'unet',#'deeplabv3+',
+        backbone: str = "efficientnet-b4",
         weights: Optional[Union[WeightsEnum, str, bool]] = None,
         in_channels: int = 10,
         num_outputs: int = 1,
         target_range: str = "universal",  # One of: "very_low", "low_medium", "medium_high", "tall"
         nan_value_target: float = -1.0,
-        nan_value_input: float = -9999.0,
+        nan_value_input: float = -0.0,
         lr: float = 1e-4,
         patience: int = 15,
+        teacher_model: Optional[nn.Module] = None,
         **kwargs: Any
     ) -> None:
 
@@ -161,6 +99,7 @@ class CanopyHeightRegressionTask(PixelwiseRegressionTask):
         self.nan_value_input = nan_value_input
         self.nan_counter = 0
         self.target_range = target_range
+        self.teacher = teacher_model
         
         # Configure range-specific parameters and metrics
         self.range_configs = {
@@ -181,8 +120,8 @@ class CanopyHeightRegressionTask(PixelwiseRegressionTask):
                 "metric_ranges": [(14, 16), (16, 20), (20, 25), (25, float('inf'))]
             },
             "universal": {
-                "loss_fn" : get_balanced_universal_loss(),
-                "metric_ranges": [(0,1),(1, 2), (2, 4), (4, 6), (6, 8), (8, 10), (10, 12), (12, 14), (14, 16), (16, 18), (18, 20), (20,25), (25,30)]
+                "loss_fn" : get_balanced_universal_loss(self.teacher),
+                "metric_ranges": [(0, 2), (2, 6), (6, 10), (10, 15), (15, 20), (20, 25), (25, 30)]
             }
         }
         
@@ -225,6 +164,32 @@ class CanopyHeightRegressionTask(PixelwiseRegressionTask):
         """Calculate metrics for specific height ranges."""
         metrics = {}
         current_ranges = self.range_configs[self.target_range]["metric_ranges"]
+
+        valid_data_mask = y != self.nan_value_target
+
+        y_hat = torch.clamp(torch.expm1(y_hat),max = 100.0)
+        y = torch.expm1(y)
+
+       #  stats = {}
+
+       #  # Overall prediction statistics                                                                                                                                           
+       #  stats.update({
+       # #     'pred_mean': y_hat.mean().item(),                                                                                                                                    
+       # #     'pred_std': y_hat.std().item(),                                                                                                                                      
+       #      'pred_min': y_hat.min().item(),
+       #      'pred_max': y_hat.max().item(),
+       # #     'pred_median': y_hat.median().item(),                                                                                                                                
+       #  #    'pred_unique_values': len(torch.unique(y_hat))                                                                                                                       
+       #  })
+
+       #  # Add percentile statistics                                                                                                                                               
+       #  percentiles = [ 75, 95, 99]
+       #  for p in percentiles:
+       #      stats[f'pred_percentile_{p}'] = torch.quantile(y_hat, p/100).item()
+
+       #  print('Prediction statistics in metrics calc:')
+       #  for key in stats:
+       #      print(f'{key}: {stats[key]}')
         
         for min_val, max_val in current_ranges:
             # Define range name
@@ -235,7 +200,7 @@ class CanopyHeightRegressionTask(PixelwiseRegressionTask):
                 range_mask = (y >= min_val) & (y < max_val)
             
             # Combine masks
-            valid_mask = range_mask & (y != self.nan_value_target) & input_mask
+            valid_mask = range_mask & valid_data_mask & input_mask
             
             if valid_mask.any():
                 range_preds = y_hat[valid_mask]
@@ -268,50 +233,61 @@ class CanopyHeightRegressionTask(PixelwiseRegressionTask):
         if y_hat.ndim != y.ndim:
             y = y.unsqueeze(dim=1)
 
-        # stats = {}
+       #  y_hat_nat = torch.expm1(y_hat)
+       #  y_nat = torch.expm1(y)
+       #  stats = {}
         
-        # # Overall prediction statistics
-        # stats.update({
-        #     'pred_mean': y_hat.mean().item(),
-        #     'pred_std': y_hat.std().item(),
-        #     'pred_min': y_hat.min().item(),
-        #     'pred_max': y_hat.max().item(),
-        #     'pred_median': y_hat.median().item(),
-        #     'pred_unique_values': len(torch.unique(y_hat))
-        # })
+       #  # Overall prediction statistics
+       #  stats.update({
+       # #     'pred_mean': y_hat.mean().item(),
+       # #     'pred_std': y_hat.std().item(),
+       #      'pred_min': y_hat_nat.min().item(),
+       #      'pred_max': y_hat_nat.max().item(),
+       # #     'pred_median': y_hat.median().item(),
+       #  #    'pred_unique_values': len(torch.unique(y_hat))
+       #  })
         
-        # # Add percentile statistics
-        # percentiles = [1, 5, 25, 50, 75, 95, 99]
-        # for p in percentiles:
-        #     stats[f'pred_percentile_{p}'] = torch.quantile(y_hat, p/100).item()
+       #  # Add percentile statistics
+       #  percentiles = [ 75, 95, 99]
+       #  for p in percentiles:
+       #      stats[f'pred_percentile_{p}'] = torch.quantile(y_hat_nat, p/100).item()
 
-        # print('Prediction statistics:')
-        # for key in stats:
-        #     print(f'{key}: {stats[key]}')
+       #  print('Prediction statistics:')
+       #  for key in stats:
+       #      print(f'{key}: {stats[key]}')
 
-        # stats = {}    
-        # # Overall prediction statistics                                                                                                                  
-        # stats.update({
-        #     'pred_mean': y.mean().item(),
-        #     'pred_std': y.std().item(),
-        #     'pred_min': y.min().item(),
-        #     'pred_max': y.max().item(),
-        #     'pred_median': y.median().item(),
-        #     'pred_unique_values': len(torch.unique(y))
-        # })
+       #  nonnan_mask = y != -1.0
+       #  ynonan = y[nonnan_mask]
 
-        # # Add percentile statistics                                                                                                                           
-        # percentiles = [1, 5, 25, 50, 75, 95, 99]
-        # for p in percentiles:
-        #     stats[f'pred_percentile_{p}'] = torch.quantile(y, p/100).item()
+       #  stats = {}    
+       #  # Overall prediction statistics                                                                                                                  
+       #  stats.update({
+       #     # 'pred_mean': ynonan.mean().item(),
+       #     # 'pred_std': ynonan.std().item(),
+       #      'pred_min': y_nat.min().item(),
+       #      'pred_max': y_nat.max().item(),
+       #      #'pred_median': ynonan.median().item(),
+       #      #'pred_unique_values': len(torch.unique(y))
+       #  })
 
-        # print('Target statistics:')
-        # for key in stats:
-        #     print(f'{key}: {stats[key]}')
+       #  # Add percentile statistics                                                                                                                           
+       #  percentiles = [ 75, 95, 99]
+       #  for p in percentiles:
+       #      stats[f'pred_percentile_{p}'] = torch.quantile(y_nat, p/100).item()
+
+       #  print('Target statistics:')
+       #  for key in stats:
+       #      print(f'{key}: {stats[key]}')
     
-            
-        loss: Tensor = self.criterion(y_hat, y)
-        loss = self._nan_robust_loss_reduction(loss, y, self.nan_value_target, input_mask)
+        if self.teacher is not None:
+            loss: Tensor = self.criterion(y_hat, y, x)
+        else: 
+            loss: Tensor = self.criterion(y_hat,y)    
+        #loss = self._nan_robust_loss_reduction(loss, y, self.nan_value_target, input_mask)
+        
+    #    print(y_hat.max())
+        
+        # print(f'Loss at training: {loss}')
 
         # Handle potential NaN loss
         if torch.isnan(loss):
@@ -319,13 +295,15 @@ class CanopyHeightRegressionTask(PixelwiseRegressionTask):
             loss = torch.tensor(1e5, device=loss.device, requires_grad=True)
 
         # Log current parameters
-        self.log("train_loss", loss)
+        self.log("train_loss", loss, prog_bar=True)
         self.log("nan_count", self.nan_counter)
         
-        #Log range-specific metrics
-       # metrics = self._calculate_range_metrics(y_hat * input_mask, y, input_mask)
-       # for name, value in metrics.items():
-       #     self.log(f"train_{name}", value)
+        # #Log range-specific metrics
+        # metrics = self._calculate_range_metrics(y_hat * input_mask, y, input_mask)
+        # for name, value in metrics.items():
+        #     if 'bias' in name:
+        #         self.log(f"train_{name}", value)
+        #       #  print(f'train_{name}',value)
         
         return loss
 
@@ -333,8 +311,7 @@ class CanopyHeightRegressionTask(PixelwiseRegressionTask):
         
         x = batch["image"]
         y = batch[self.target_key].to(torch.float)
-
-        
+   
         # Handle NaN inputs and get mask
         x_filled, input_mask = self._handle_nan_inputs(x)
 
@@ -343,10 +320,11 @@ class CanopyHeightRegressionTask(PixelwiseRegressionTask):
         if y_hat.ndim != y.ndim:
             y = y.unsqueeze(dim=1)
 
-    
-        loss: Tensor = self.criterion(y_hat, y)
-        loss = self._nan_robust_loss_reduction(loss, y, self.nan_value_target,input_mask)
-
+        if self.teacher is not None:
+            loss: Tensor = self.criterion(y_hat, y, x)
+        else: 
+            loss: Tensor = self.criterion(y_hat,y) 
+        #loss = self._nan_robust_loss_reduction(loss, y, self.nan_value_target,input_mask)
 
         # Handle potential NaN loss
         if torch.isnan(loss):
@@ -373,7 +351,7 @@ class CanopyHeightRegressionTask(PixelwiseRegressionTask):
             y = y.unsqueeze(dim=1)
 
         loss: Tensor = self.criterion(y_hat, y)
-        loss = self._nan_robust_loss_reduction(loss, y, self.nan_value_target, input_mask)
+        #loss = self._nan_robust_loss_reduction(loss, y, self.nan_value_target, input_mask)
         
         # Log overall loss
         self.log("test_loss", loss)
@@ -400,32 +378,59 @@ class CanopyHeightRegressionTask(PixelwiseRegressionTask):
             return y_hat    
         return None
 
+    # # This is for Stage 1
+    # def configure_optimizers(self):
+    #     optimizer = torch.optim.AdamW(
+    #         self.parameters(),
+    #         lr=self.hparams.lr,  
+    #         weight_decay=0.01
+    #     )
+        
+    #     total_steps = self.trainer.estimated_stepping_batches
+
+    #     scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    #         optimizer,
+    #         max_lr=self.hparams.lr,
+    #         epochs=self.trainer.max_epochs,
+    #         total_steps=total_steps,
+    #         pct_start=0.25,
+    #         div_factor=15,        
+    #         final_div_factor=100, 
+    #         three_phase=False,
+    #         anneal_strategy='cos'
+    #     )
+
+    #     return {
+    #         "optimizer": optimizer,
+    #         "lr_scheduler": {
+    #             "scheduler": scheduler,
+    #             "interval": "step",
+    #             "frequency": 1
+    #         }
+    #     }
+
+    # This is for stage 2
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
             self.parameters(),
-            lr=self.hparams.lr,  
+            lr=1e-5,  # Lower base LR than stage 1
             weight_decay=0.01
         )
         
-        total_steps = self.trainer.estimated_stepping_batches
-
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        # Cyclical LR with smaller amplitude
+        scheduler = torch.optim.lr_scheduler.CyclicLR(
             optimizer,
-            max_lr=self.hparams.lr,
-            epochs=self.trainer.max_epochs,
-            total_steps=total_steps,
-            pct_start=0.30,
-            div_factor=15,        
-            final_div_factor=60, 
-            three_phase=False,
-            anneal_strategy='cos'
+            base_lr=5e-6,  # Lower bound
+            max_lr=3e-5,   # Upper bound (smaller than stage 1)
+            step_size_up=200,  # Longer cycles
+            mode='triangular2',  # Amplitude decreases over time
+            cycle_momentum=False
         )
-
+        
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
                 "scheduler": scheduler,
-                "interval": "step",
-                "frequency": 1
+                "interval": "step"
             }
         }
