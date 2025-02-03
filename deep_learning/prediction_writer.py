@@ -8,6 +8,14 @@ from shapely import geometry
 import logging
 from typing import Any, Dict, List, Optional, Union
 import numpy as np
+import os
+import gc
+import psutil
+
+def print_memory_status():
+    vm = psutil.virtual_memory()
+    print(f"Memory usage: {vm.percent}%")
+    print(f"Available memory: {vm.available / (1024 * 1024 * 1024):.2f} GB")
 
 class CanopyHeightRasterWriter(BasePredictionWriter):
     def __init__(self, output_dir, write_interval):
@@ -25,26 +33,44 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
     def write_on_batch_end(
         self, trainer, pl_module, prediction, batch_indices, batch, batch_idx, dataloader_idx
     ):
-        # Process single prediction (batch_size=1)
-        predicted_patch = prediction[0]
-        index = batch_indices[0]
+
+        print(f'Memory status before writing batch: ')
+        print_memory_status()
+
+        try: 
+            # Handle both single and batch predictions
+            if not isinstance(prediction, (list, tuple)):
+                prediction = [prediction]
+            if not isinstance(batch_indices, (list, tuple)):
+                batch_indices = [batch_indices]  
         
-        try:
-            self._process_single_prediction(
-                predicted_patch, 
-                index,
-                dataloader_idx,
-                batch_idx
-            )
+            with torch.no_grad():
+                try:
+                    for pred, index in zip(prediction, batch_indices):
+                        self._process_single_prediction(
+                            pred, 
+                            index,
+                            dataloader_idx,
+                            batch_idx
+                        )
+                except Exception as e:
+                    print(f'Error processing prediction: {e}')
+                    raise e                        
+                finally:
+                    # For MPS, explicit deletion is usually enough due to unified memory
+                    if 'pred' in locals():
+                        del pred
+                        gc.collect()
+        except Exception as e:
+            print(f'Error processing prediction: {e}')
+            raise e    
         finally:
-            # For MPS, explicit deletion is usually enough due to unified memory
-            if isinstance(predicted_patch, torch.Tensor):
-                del predicted_patch
-                # No need for cuda.empty_cache() with MPS
-                
-                # Optional: Force garbage collection if memory pressure is high
-                # import gc
-                # gc.collect()
+            if 'prediction' in locals():
+                del prediction 
+                gc.collect()    
+
+        print(f'Memory status after writing batch: ')
+        print_memory_status()        
 
     def _process_single_prediction(self, predicted_patch, index, dataloader_idx, batch_idx):
         # Check Spain intersection
@@ -106,6 +132,7 @@ class CanopyHeightRasterWriter(BasePredictionWriter):
 
         # Clear data
         del pred_data
+        gc.collect()
         
     def write_on_epoch_end(self, trainer, pl_module, predictions, batch_indices):
         return None

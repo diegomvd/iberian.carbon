@@ -4,300 +4,6 @@ from typing import List, Iterator, Tuple
 from torchgeo.samplers.utils import get_random_bounding_box
 from torchgeo.datasets.utils import BoundingBox
 
-class WeightedHeightComplexitySampler(RandomBatchGeoSampler):
-    def __init__(
-        self,
-        dataset,
-        patch_size: int,
-        batch_size: int,
-        length: int,
-        height_exp: float = 2.0,         # Height weighting power
-        min_valid_ratio: float = 0.5,
-        oversample_factor: float = 10.0,
-        nan_value: float = -32767.0
-    ):
-        super().__init__(dataset, patch_size, batch_size, length)
-        self.height_exp = height_exp  
-        self.min_valid_ratio = min_valid_ratio
-        self.oversample_factor = oversample_factor
-        self.nan_value = nan_value
-
-    def _calculate_patch_score(self, heights: torch.Tensor) -> Tuple[float, float]:
-        """Calculate height score and complexity score for a patch."""
-        # Get valid heights
-        valid_mask = heights != self.nan_value
-        valid_ratio = valid_mask.float().mean().item()
-        
-        if valid_ratio < self.min_valid_ratio:
-            return 0.0, 0.0
-            
-        valid_heights = heights[valid_mask]
-        if len(valid_heights) == 0:
-            return 0.0, 0.0
-
-        # Height score using exponential weighting
-        height_score = torch.mean(torch.pow(torch.clamp(valid_heights/15.0, min=0), self.height_exp))
-        
-        # Complexity using coefficient of variation (computationally efficient)
-        mean = valid_heights.mean()
-        if mean == 0:
-            return height_score.item(), 0.0
-            
-        std = valid_heights.std()
-        complexity_score = (std / mean).item()  # CV as complexity measure
-
-        return height_score.item(), complexity_score
-
-    def _evaluate_patch(self, patch_data: dict) -> float:
-        """Combine height and complexity scores based on current weights."""
-        if 'mask' not in patch_data:
-            return 0.0
-            
-        height_score, complexity_score = self._calculate_patch_score(patch_data['mask'])
-        return torch.sqrt(height_score * complexity_score).item()
-
-    def __iter__(self) -> Iterator[List[BoundingBox]]:
-        for _ in range(len(self)):
-            idx = torch.multinomial(self.areas, 1)
-            hit = self.hits[idx]
-            bounds = BoundingBox(*hit.bounds)
-            
-            n_candidates = int(self.batch_size * self.oversample_factor)
-            candidates = []
-            
-            for _ in range(n_candidates):
-                bounding_box = get_random_bounding_box(bounds, self.size, self.res)
-                patch_data = self.dataset.datasets[1][bounding_box]
-                
-                if 'mask' in patch_data:
-                    score = self._calculate_tall_vegetation_score(patch_data['mask'])
-                    candidates.append((bounding_box, score))
-            
-            candidates.sort(key=lambda x: x[1], reverse=True)
-            selected_bboxes = [c[0] for c in candidates[:self.batch_size]]
-            
-            while len(selected_bboxes) < self.batch_size:
-                bounding_box = get_random_bounding_box(bounds, self.size, self.res)
-                selected_bboxes.append(bounding_box)
-                
-            yield selected_bboxes    
-
-
-class TallVegetationSampler(RandomBatchGeoSampler):
-    """
-    Batch sampler maximizing exposure to tall vegetation by prioritizing 
-    scenes with high proportion of tall trees.
-    """
-    def __init__(
-        self,
-        dataset,
-        patch_size: int,
-        batch_size: int,
-        length: int,
-        height_threshold: float = 15.0,  # Threshold for "tall" vegetation
-        oversample_factor: float = 3.0,
-        nan_value: float = -32767.0
-    ):
-        super().__init__(dataset, patch_size, batch_size, length)
-        self.height_threshold = height_threshold
-        self.oversample_factor = oversample_factor
-        self.nan_value = nan_value
-        self.dataset = dataset
-
-    def _calculate_tall_vegetation_score(self, heights: torch.Tensor) -> float:
-        """Calculate score based on proportion and magnitude of tall vegetation."""
-        valid_mask = heights != self.nan_value
-        valid_heights = heights[valid_mask]
-        
-        if len(valid_heights) == 0:
-            return 0.0
-            
-        # Calculate proportion of pixels above threshold
-        tall_ratio = (valid_heights >= self.height_threshold).float().mean().item()
-        
-        # Calculate average height of tall vegetation
-        tall_heights = valid_heights[valid_heights >= self.height_threshold]
-        if len(tall_heights) > 0:
-            tall_mean = tall_heights.mean().item()
-        else:
-            tall_mean = 0.0
-            
-        # Score combines both ratio and magnitude
-        return tall_ratio * tall_mean
-
-    def __iter__(self) -> Iterator[List[BoundingBox]]:
-        for _ in range(len(self)):
-            idx = torch.multinomial(self.areas, 1)
-            hit = self.hits[idx]
-            bounds = BoundingBox(*hit.bounds)
-            
-            n_candidates = int(self.batch_size * self.oversample_factor)
-            candidates = []
-            
-            for _ in range(n_candidates):
-                bounding_box = get_random_bounding_box(bounds, self.size, self.res)
-                patch_data = self.dataset.datasets[1][bounding_box]
-                
-                if 'mask' in patch_data:
-                    score = self._calculate_tall_vegetation_score(patch_data['mask'])
-                    candidates.append((bounding_box, score))
-            
-            candidates.sort(key=lambda x: x[1], reverse=True)
-            selected_bboxes = [c[0] for c in candidates[:self.batch_size]]
-            
-            while len(selected_bboxes) < self.batch_size:
-                bounding_box = get_random_bounding_box(bounds, self.size, self.res)
-                selected_bboxes.append(bounding_box)
-                
-            yield selected_bboxes
-
-class ProgressiveGeoSampler(RandomBatchGeoSampler):
-    """
-    Sampler that progressively relaxes criteria to find diverse patches.
-    Prioritizes tall trees in simple scenes, then falls back to other criteria.
-    
-    Args:
-        dataset: The dataset to sample from
-        patch_size: Size of patches to sample
-        batch_size: Number of patches per batch
-        length: Number of batches per epoch
-        min_height_threshold: Minimum height to consider for "tall" vegetation
-        min_tall_ratio: Minimum ratio of tall vegetation required
-        max_attempts: Maximum sampling attempts per batch
-        max_complexity: Maximum complexity for "simple" scenes
-        min_valid_ratio: Minimum ratio of valid (non-nan) pixels
-        nan_value: Value indicating no-data points
-    """
-    def __init__(
-        self,
-        dataset,
-        patch_size: int,
-        batch_size: int,
-        length: int,
-        min_height_threshold: float = 15.0,
-        min_tall_ratio: float = 0.1,
-        max_attempts: int = 2000,  # Increased from original
-        max_complexity: float = 0.4,
-        min_valid_ratio: float = 0.5,
-        nan_value: float = -32767.0
-    ):
-        super().__init__(dataset, patch_size, batch_size, length)
-        self.min_height_threshold = min_height_threshold
-        self.min_tall_ratio = min_tall_ratio
-        self.max_attempts = max_attempts
-        self.max_complexity = max_complexity
-        self.min_valid_ratio = min_valid_ratio
-        self.nan_value = nan_value
-        self.dataset = dataset
-        
-        # Attempt thresholds for different stages
-        self.stage_thresholds = {
-            'ideal': int(0.4 * max_attempts),     # Try to find ideal patches first
-            'tall_only': int(0.7 * max_attempts), # Then focus on just tall trees
-            'complex': int(0.9 * max_attempts),   # Then accept complex scenes
-            'random': max_attempts                # Finally random sampling
-        }
-        
-    def _calculate_patch_metrics(self, heights: torch.Tensor) -> Tuple[float, float, float, float]:
-        """
-        Calculate all metrics for a patch.
-        Returns (valid_ratio, complexity, tall_ratio, height_score).
-        """
-        # Calculate valid ratio first
-        valid_mask = heights != self.nan_value
-        valid_ratio = valid_mask.float().mean().item()
-        
-        if valid_ratio < self.min_valid_ratio:
-            return valid_ratio, 1.0, 0.0, 0.0
-            
-        valid_heights = heights[valid_mask]
-        if len(valid_heights) == 0:
-            return valid_ratio, 1.0, 0.0, 0.0
-            
-        # Calculate basic statistics
-        mean = valid_heights.mean()
-        if mean == 0:
-            return valid_ratio, 1.0, 0.0, 0.0
-            
-        # Complexity score using CV and skewness
-        std = valid_heights.std()
-        cv = std / mean
-        skewness = torch.mean(((valid_heights - mean) / std)**3)
-        complexity = torch.tanh(cv * abs(skewness)) / 2 + 0.5
-        
-        # Calculate tall tree ratio
-        tall_mask = valid_heights >= self.min_height_threshold
-        tall_ratio = tall_mask.float().mean().item()
-        
-        # Overall height score (could be used for additional filtering)
-        height_score = tall_ratio * (1 - complexity.item())
-        
-        return valid_ratio, complexity.item(), tall_ratio, height_score
-        
-    def _evaluate_patch(self, patch_data: dict, attempts: int) -> Tuple[bool, float]:
-        """
-        Evaluate if a patch meets current criteria based on sampling stage.
-        Returns (accepted, score).
-        """
-        if 'mask' not in patch_data:
-            return False, 0.0
-            
-        valid_ratio, complexity, tall_ratio, height_score = self._calculate_patch_metrics(patch_data['mask'])
-        
-        # Basic validity check
-        if valid_ratio < self.min_valid_ratio:
-            return False, 0.0
-            
-        # Progressive criteria based on attempt count
-        if attempts < self.stage_thresholds['ideal']:
-            # Stage 1: Look for simple scenes with tall trees
-            if complexity <= self.max_complexity and tall_ratio >= self.min_tall_ratio:
-                return True, height_score
-                
-        elif attempts < self.stage_thresholds['tall_only']:
-            # Stage 2: Accept any scene with sufficient tall trees
-            if tall_ratio >= self.min_tall_ratio:
-                return True, tall_ratio
-                
-        elif attempts < self.stage_thresholds['complex']:
-            # Stage 3: Accept complex scenes to ensure model learns challenging cases
-            if complexity > self.max_complexity:
-                return True, complexity
-                
-        else:
-            # Stage 4: Accept any valid patch, preferring those with some height variation
-            return True, max(0.1, height_score)
-            
-        return False, 0.0
-
-    def __iter__(self) -> Iterator[List[BoundingBox]]:
-        """Iterator that yields batches using progressive criteria."""
-        for _ in range(len(self)):
-            idx = torch.multinomial(self.areas, 1)
-            hit = self.hits[idx]
-            bounds = BoundingBox(*hit.bounds)
-            
-            selected_bboxes = []
-            attempts = 0
-            
-            while len(selected_bboxes) < self.batch_size and attempts < self.max_attempts:
-                bounding_box = get_random_bounding_box(bounds, self.size, self.res)
-                
-                patch_data = self.dataset.datasets[1][bounding_box]
-                accepted, score = self._evaluate_patch(patch_data, attempts)
-                
-                if accepted:
-                    selected_bboxes.append(bounding_box)
-                
-                attempts += 1
-            
-            # Fill any remaining spots with random patches
-            while len(selected_bboxes) < self.batch_size:
-                bounding_box = get_random_bounding_box(bounds, self.size, self.res)
-                selected_bboxes.append(bounding_box)
-                
-            yield selected_bboxes
-
 class HeightDiversityBatchSampler(RandomBatchGeoSampler):
     """
     Batch sampler that prioritizes patches with diverse height distributions.
@@ -320,7 +26,10 @@ class HeightDiversityBatchSampler(RandomBatchGeoSampler):
      #   generator: Generator | None = None, # for compatibility with torchgeo 0.7    
         max_diversity_threshold: float = 8.0,
         min_diversity_threshold: float = 4.0,
-        max_attempts: int = 640,
+        # tall_batch_ratio: float = 0.4,    
+        # tall_tree_ratio: float = 0.25,
+        # tall_height_threshold: float = 10.0,
+        max_attempts: int = 1200,
         nan_value: float = -32767.0,
         initial_max_nodata_ratio: float = 0.4,
         initial_max_low_veg_ratio: float = 0.4
@@ -328,11 +37,25 @@ class HeightDiversityBatchSampler(RandomBatchGeoSampler):
         super().__init__(dataset, patch_size, batch_size, length)
         self.max_diversity_threshold = max_diversity_threshold
         self.min_diversity_threshold = min_diversity_threshold
+        # self.tall_tree_ratio = tall_tree_ratio
+        # self.tall_height_threshold = tall_height_threshold
         self.max_attempts = max_attempts
         self.nan_value = nan_value
         self.dataset = dataset
         self.initial_max_nodata_ratio = initial_max_nodata_ratio
         self.initial_max_low_veg_ratio = initial_max_low_veg_ratio
+
+        # self.tall_batch_size = int(batch_size*tall_batch_ratio)
+        # self.general_batch_size = batch_size - self.tall_batch_size
+
+    # def _evaluate_patch_tall_trees(self, heights: torch.Tensor) -> bool:
+    #     """Check if patch contains sufficient tall trees."""
+    #     valid_mask = heights != self.nan_value
+    #     valid_heights = heights[valid_mask]
+    #     if len(valid_heights) == 0:
+    #         return False
+    #     tall_ratio = (valid_heights >= self.tall_height_threshold).float().mean().item()
+    #     return tall_ratio >= self.tall_tree_ratio  # Minimum ratio of tall trees
 
     def _print_patch_stats(self, heights: torch.Tensor, score: float, progress: float) -> None:
         """Print detailed patch statistics ignoring nan values."""            
